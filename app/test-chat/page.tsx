@@ -9,7 +9,7 @@ export default function TestChatPage() {
   const [chatMinimized, setChatMinimized] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-black-900 to-slate-800 text-white p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
           Chat System Test

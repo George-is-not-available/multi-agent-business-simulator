@@ -47,9 +47,9 @@ export default function LeaderboardPage() {
 
   const renderStatistics = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-blue-300 flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Users className="h-5 w-5" />
             玩家统计
           </CardTitle>
@@ -57,24 +57,24 @@ export default function LeaderboardPage() {
         <CardContent>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-400">总玩家数</span>
-              <span className="text-white font-medium">1,234</span>
+              <span className="text-muted-foreground">总玩家数</span>
+              <span className="text-foreground font-medium">1,234</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">活跃玩家</span>
-              <span className="text-green-400 font-medium">892</span>
+              <span className="text-muted-foreground">活跃玩家</span>
+              <span className="text-green-600 font-medium">892</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">新用户（本周）</span>
-              <span className="text-blue-400 font-medium">156</span>
+              <span className="text-muted-foreground">新用户（本周）</span>
+              <span className="text-blue-600 font-medium">156</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-blue-300 flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             游戏统计
           </CardTitle>
@@ -82,24 +82,24 @@ export default function LeaderboardPage() {
         <CardContent>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-400">总游戏场次</span>
-              <span className="text-white font-medium">5,678</span>
+              <span className="text-muted-foreground">总游戏场次</span>
+              <span className="text-foreground font-medium">5,678</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">今日游戏</span>
-              <span className="text-green-400 font-medium">234</span>
+              <span className="text-muted-foreground">今日游戏</span>
+              <span className="text-green-600 font-medium">234</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">平均时长</span>
-              <span className="text-blue-400 font-medium">12.5分钟</span>
+              <span className="text-muted-foreground">平均时长</span>
+              <span className="text-blue-600 font-medium">12.5分钟</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-blue-300 flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Clock className="h-5 w-5" />
             时间统计
           </CardTitle>
@@ -107,24 +107,24 @@ export default function LeaderboardPage() {
         <CardContent>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-400">总游戏时长</span>
-              <span className="text-white font-medium">1,234小时</span>
+              <span className="text-muted-foreground">总游戏时长</span>
+              <span className="text-foreground font-medium">1,234小时</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">平均在线时长</span>
-              <span className="text-green-400 font-medium">45分钟</span>
+              <span className="text-muted-foreground">平均在线时长</span>
+              <span className="text-green-600 font-medium">45分钟</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">峰值在线</span>
-              <span className="text-blue-400 font-medium">67人</span>
+              <span className="text-muted-foreground">峰值在线</span>
+              <span className="text-blue-600 font-medium">67人</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-blue-300 flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
             <DollarSign className="h-5 w-5" />
             资产统计
           </CardTitle>
@@ -132,16 +132,16 @@ export default function LeaderboardPage() {
         <CardContent>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-400">最高资产记录</span>
-              <span className="text-white font-medium">$12.5M</span>
+              <span className="text-muted-foreground">最高资产记录</span>
+              <span className="text-foreground font-medium">$12.5M</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">平均资产</span>
-              <span className="text-green-400 font-medium">$2.1M</span>
+              <span className="text-muted-foreground">平均资产</span>
+              <span className="text-green-600 font-medium">$2.1M</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">总资产流通</span>
-              <span className="text-blue-400 font-medium">$456M</span>
+              <span className="text-muted-foreground">总资产流通</span>
+              <span className="text-blue-600 font-medium">$456M</span>
             </div>
           </div>
         </CardContent>
@@ -160,7 +160,7 @@ export default function LeaderboardPage() {
 
     if (!achievementData) {
       return (
-        <div className="text-center text-gray-400 py-12">
+        <div className="text-center text-muted-foreground py-12">
           <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>暂无成就数据</p>
         </div>
@@ -180,43 +180,43 @@ export default function LeaderboardPage() {
       <div className="space-y-6">
         {/* 成就统计概览 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <Trophy className="h-6 w-6 text-blue-400" />
+                  <Trophy className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{ACHIEVEMENTS.length}</p>
-                  <p className="text-sm text-gray-400">总成就数</p>
+                  <p className="text-2xl font-bold text-foreground">{ACHIEVEMENTS.length}</p>
+                  <p className="text-sm text-muted-foreground">总成就数</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-slate-800/50 backdrop-blur-sm border-yellow-500/30">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-yellow-500/20 rounded-lg">
-                  <Star className="h-6 w-6 text-yellow-400" />
+                  <Star className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{achievementData.leaderboard?.length || 0}</p>
-                  <p className="text-sm text-gray-400">玩家参与</p>
+                  <p className="text-2xl font-bold text-foreground">{achievementData.leaderboard?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">玩家参与</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-slate-800/50 backdrop-blur-sm border-purple-500/30">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-500/20 rounded-lg">
-                  <Crown className="h-6 w-6 text-purple-400" />
+                  <Crown className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{ACHIEVEMENTS.filter(a => a.rarity === 'legendary').length}</p>
-                  <p className="text-sm text-gray-400">传奇成就</p>
+                  <p className="text-2xl font-bold text-foreground">{ACHIEVEMENTS.filter(a => a.rarity === 'legendary').length}</p>
+                  <p className="text-sm text-muted-foreground">传奇成就</p>
                 </div>
               </div>
             </CardContent>
@@ -224,15 +224,15 @@ export default function LeaderboardPage() {
         </div>
 
         {/* 过滤器 */}
-        <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+        <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap gap-4 items-center">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-300">类别:</span>
+                <span className="text-sm text-foreground">类别:</span>
                 <select 
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
+                  className="bg-background border border-border rounded px-3 py-1 text-sm text-foreground"
                 >
                   {categories.map(cat => (
                     <option key={cat} value={cat}>
@@ -243,11 +243,11 @@ export default function LeaderboardPage() {
               </div>
               
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-300">稀有度:</span>
+                <span className="text-sm text-foreground">稀有度:</span>
                 <select 
                   value={selectedRarity}
                   onChange={(e) => setSelectedRarity(e.target.value)}
-                  className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
+                  className="bg-background border border-border rounded px-3 py-1 text-sm text-foreground"
                 >
                   {rarities.map(rarity => (
                     <option key={rarity} value={rarity}>
@@ -262,17 +262,22 @@ export default function LeaderboardPage() {
 
         {/* 成就网格 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredAchievements.map((achievement) => (
-            <AchievementBadge
-              key={achievement.id}
-              achievement={achievement}
-              unlocked={false} // 这里需要实际的解锁状态
-            />
-          ))}
+          {filteredAchievements.map((achievement, index) => {
+            // 随机解锁少数成就（约15%），其余以灰色调显示
+            const isUnlocked = index < 5 || (index < filteredAchievements.length * 0.15 && Math.random() < 0.3);
+            
+            return (
+              <AchievementBadge
+                key={achievement.id}
+                achievement={achievement}
+                unlocked={isUnlocked}
+              />
+            );
+          })}
         </div>
 
         {filteredAchievements.length === 0 && (
-          <div className="text-center text-gray-400 py-12">
+          <div className="text-center text-muted-foreground py-12">
             <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>没有找到符合条件的成就</p>
           </div>
@@ -282,7 +287,7 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -291,16 +296,15 @@ export default function LeaderboardPage() {
               onClick={() => router.push('/')}
               variant="outline"
               size="sm"
-              className="border-blue-500/30 hover:border-blue-400"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               返回主页
             </Button>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold text-foreground tracking-tight">
                 游戏排行榜
               </h1>
-              <p className="text-blue-200 mt-1">查看玩家排名、统计数据和成就</p>
+              <p className="text-muted-foreground mt-1">查看玩家排名、统计数据和成就</p>
             </div>
           </div>
         </div>
@@ -312,11 +316,7 @@ export default function LeaderboardPage() {
               key={tab.id}
               onClick={() => setSelectedTab(tab.id)}
               variant={selectedTab === tab.id ? "default" : "outline"}
-              className={`flex items-center gap-2 ${
-                selectedTab === tab.id
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'border-blue-500/30 hover:border-blue-400'
-              }`}
+              className="flex items-center gap-2"
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
@@ -332,14 +332,14 @@ export default function LeaderboardPage() {
           
           {selectedTab === 'statistics' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-blue-300 mb-4">游戏统计概览</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">游戏统计概览</h2>
               {renderStatistics()}
             </div>
           )}
           
           {selectedTab === 'achievements' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-blue-300 mb-4">成就系统</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">成就系统</h2>
               {renderAchievements()}
             </div>
           )}

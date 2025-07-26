@@ -33,18 +33,22 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
   };
 
   return (
-    <Card className={`${className} ${
+    <Card className={`${className} relative transition-all duration-200 ${
       unlocked 
-        ? 'bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-blue-500/50' 
-        : 'bg-gray-800/50 border-gray-600/30'
+        ? 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 hover:border-blue-300' 
+        : 'bg-gray-100 border-gray-200 opacity-60 grayscale hover:opacity-80 hover:grayscale-0'
     }`}>
       <CardContent className="p-3">
         <div className="flex items-center gap-2 mb-2">
-          <div className="text-lg">{achievement.icon}</div>
+          <div className={`text-lg transition-all duration-200 ${
+            unlocked ? '' : 'opacity-50 grayscale'
+          }`}>
+            {achievement.icon}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-1">
-              <h4 className={`font-semibold text-sm truncate ${
-                unlocked ? 'text-white' : 'text-gray-400'
+              <h4 className={`font-semibold text-sm truncate transition-all duration-200 ${
+                unlocked ? 'text-foreground' : 'text-muted-foreground'
               }`}>
                 {achievement.name}
               </h4>
@@ -54,47 +58,74 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
             </div>
             <div className="flex items-center gap-1 mb-1">
               <Badge 
-                className="text-xs px-1 py-0"
+                className={`text-xs px-1 py-0 transition-all duration-200 ${
+                  unlocked ? '' : 'opacity-50 grayscale'
+                }`}
                 style={{ 
-                  backgroundColor: `${rarityColor}20`,
-                  color: rarityColor,
-                  borderColor: `${rarityColor}30`
+                  backgroundColor: unlocked ? `${rarityColor}20` : '#374151',
+                  color: unlocked ? rarityColor : '#6B7280',
+                  borderColor: unlocked ? `${rarityColor}30` : '#4B5563'
                 }}
               >
                 {achievement.rarity}
               </Badge>
               <Badge 
-                className="text-xs px-1 py-0"
+                className={`text-xs px-1 py-0 transition-all duration-200 ${
+                  unlocked ? '' : 'opacity-50 grayscale'
+                }`}
                 style={{ 
-                  backgroundColor: `${categoryColor}20`,
-                  color: categoryColor,
-                  borderColor: `${categoryColor}30`
+                  backgroundColor: unlocked ? `${categoryColor}20` : '#374151',
+                  color: unlocked ? categoryColor : '#6B7280',
+                  borderColor: unlocked ? `${categoryColor}30` : '#4B5563'
                 }}
               >
-                {getCategoryIcon(achievement.category)}
+                <span className={unlocked ? '' : 'opacity-70'}>
+                  {getCategoryIcon(achievement.category)}
+                </span>
                 <span className="ml-1">{achievement.category}</span>
               </Badge>
             </div>
           </div>
         </div>
         
-        <p className={`text-xs mb-2 ${
-          unlocked ? 'text-gray-300' : 'text-gray-500'
+        <p className={`text-xs mb-2 transition-all duration-200 ${
+          unlocked ? 'text-muted-foreground' : 'text-muted-foreground/70'
         }`}>
           {achievement.description}
         </p>
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <Star className="h-3 w-3 text-yellow-400" />
-            <span className="text-xs text-yellow-400">{achievement.reward.points}</span>
+            <Star className={`h-3 w-3 transition-all duration-200 ${
+              unlocked ? 'text-yellow-600' : 'text-muted-foreground opacity-50'
+            }`} />
+            <span className={`text-xs transition-all duration-200 ${
+              unlocked ? 'text-yellow-600' : 'text-muted-foreground'
+            }`}>
+              {achievement.reward.points}
+            </span>
           </div>
           {achievement.reward.title && (
-            <Badge className="text-xs bg-purple-500/20 text-purple-400 border-purple-500/30">
+            <Badge className={`text-xs transition-all duration-200 ${
+              unlocked 
+                ? 'bg-purple-100 text-purple-700 border-purple-200' 
+                : 'bg-gray-100 text-muted-foreground border-gray-200 opacity-50'
+            }`}>
               {achievement.reward.title}
             </Badge>
           )}
         </div>
+        
+        {/* 未完成成就的锁定指示器 */}
+        {!unlocked && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+            <div className="bg-muted/80 rounded-full p-2">
+              <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
