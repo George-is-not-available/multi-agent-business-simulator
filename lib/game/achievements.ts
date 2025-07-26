@@ -626,7 +626,7 @@ export const ACHIEVEMENT_COLORS = {
     uncommon: '#10B981',
     rare: '#3B82F6',
     epic: '#8B5CF6',
-    legendary: '#F59E0B'
+    legendary: '#FFD700'
   },
   category: {
     business: '#10B981',
