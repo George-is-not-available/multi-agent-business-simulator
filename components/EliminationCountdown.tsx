@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface EliminationCountdownProps {
   gameStartTime: number;
@@ -14,6 +15,7 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
   eliminationEnabled
 }) => {
   const [timeLeft, setTimeLeft] = useState(0);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (eliminationEnabled) return;
@@ -48,11 +50,11 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-400/50"></div>
           <span className="text-red-300 font-medium text-sm">
-            ⚠️ 淘汰机制已激活
+            ⚠️ {t.competition.eliminationActivated}
           </span>
         </div>
         <div className="mt-1 text-xs text-red-400/80">
-          资产为0的公司将被淘汰
+          {t.competition.assetsZeroEliminated}
         </div>
       </div>
     );
@@ -87,7 +89,7 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
             font-medium text-sm
             ${isCritical ? 'text-red-300' : isWarning ? 'text-yellow-300' : 'text-blue-300'}
           `}>
-            {isCritical ? '⚠️ 即将启动淘汰机制' : isWarning ? '🔸 淘汰机制准备中' : '🛡️ 安全期'}
+            {isCritical ? `⚠️ ${t.competition.aboutToActivate}` : isWarning ? `🔸 ${t.competition.preparingElimination}` : `🛡️ ${t.competition.safetyPeriod}`}
           </span>
         </div>
         <div className={`
@@ -118,7 +120,7 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
       
       <div className="mt-2 text-xs opacity-70">
         <span className={isCritical ? 'text-red-400/80' : isWarning ? 'text-yellow-400/80' : 'text-blue-400/80'}>
-          {timeLeft > 0 ? '距离淘汰机制启用还有' : '淘汰机制即将启用'}
+          {timeLeft > 0 ? t.competition.timeRemaining : t.competition.aboutToActivate}
         </span>
       </div>
     </div>

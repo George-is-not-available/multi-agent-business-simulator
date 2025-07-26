@@ -93,6 +93,11 @@ export default function GamePage() {
       </div>
       
       <div className="max-w-7xl mx-auto relative z-10">
+        {/* 语言切换按钮 */}
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSwitch variant="compact" />
+        </div>
+        
         {/* AI倒计时提示 */}
         {aiDecisionCooldown > 0 && (
           <div className="mb-4">
@@ -118,7 +123,7 @@ export default function GamePage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-cyan-200 flex items-center gap-2">
                 <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
-                公司资产
+{t.game.assets}
               </CardTitle>
               <DollarSign className="h-4 w-4 text-cyan-400 drop-shadow-lg" />
             </CardHeader>
@@ -127,7 +132,7 @@ export default function GamePage() {
                 ${playerCompany?.assets.toLocaleString()}
               </div>
               <div className="text-xs text-blue-300/70 mt-1">
-                AeroVita Enterprise
+{t.company.aeroVitaEnterprise}
               </div>
             </CardContent>
           </Card>
@@ -136,7 +141,7 @@ export default function GamePage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-green-200 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                员工数量
+{t.game.employees}
               </CardTitle>
               <Users className="h-4 w-4 text-green-400 drop-shadow-lg" />
             </CardHeader>
@@ -145,7 +150,7 @@ export default function GamePage() {
                 {playerCompany?.employees}
               </div>
               <div className="text-xs text-green-300/70 mt-1">
-                Neural Workforce
+{t.company.neuralWorkforce}
               </div>
             </CardContent>
           </Card>
@@ -154,7 +159,7 @@ export default function GamePage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-purple-200 flex items-center gap-2">
                 <span className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></span>
-                建筑数量
+{t.game.buildings}
               </CardTitle>
               <Building className="h-4 w-4 text-purple-400 drop-shadow-lg" />
             </CardHeader>
@@ -172,7 +177,7 @@ export default function GamePage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-red-200 flex items-center gap-2">
                 <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></span>
-                竞争对手
+{t.company.competitor}
               </CardTitle>
               <Target className="h-4 w-4 text-red-400 drop-shadow-lg" />
             </CardHeader>

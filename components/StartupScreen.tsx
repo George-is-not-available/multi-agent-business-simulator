@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+import LanguageSwitch from '@/components/LanguageSwitch';
 
 interface StartupScreenProps {
   onComplete: () => void;
@@ -11,6 +13,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     setIsMounted(true);
@@ -138,7 +141,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
           <div className="relative px-8 py-6 bg-gradient-to-br from-blue-900/30 via-transparent to-cyan-900/30 backdrop-blur-sm rounded-xl border border-blue-400/30">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-wider text-center">
               <span className="bg-gradient-to-r from-blue-300 via-cyan-300 to-blue-400 bg-clip-text text-transparent drop-shadow-2xl">
-                RESP-X
+                {t.startup.title}
               </span>
               <span className="text-sm sm:text-base md:text-lg align-top text-cyan-300 ml-2 drop-shadow-lg">™</span>
             </h1>
@@ -171,15 +174,15 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
         <div className="text-center mb-8 space-y-3">
           <p className="text-lg sm:text-xl md:text-2xl text-cyan-300 font-medium tracking-wide">
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              AeroVita Labs
+              {t.startup.subtitle}
             </span>
           </p>
           <div className="w-24 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent mx-auto"></div>
           <p className="text-xs sm:text-sm md:text-base text-blue-300/80 px-4">
-            Advanced Multi-Agent Business Simulation
+            {t.startup.description}
           </p>
           <p className="text-xs text-cyan-400/60">
-            Powered by AI & Molecular Intelligence
+            {t.startup.poweredBy}
           </p>
         </div>
 
@@ -193,7 +196,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
         {/* 进度提示 */}
         <div className="mt-6 text-center">
           <p className="text-xs text-blue-400/60 animate-pulse">
-            Initializing Neural Networks...
+            {t.startup.initializing}
           </p>
         </div>
       </div>
@@ -201,11 +204,16 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
       {/* 底部版权信息 */}
       <div className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-center">
         <p className="text-xs text-blue-400/60 mb-1">
-          © 2024 AeroVita Labs. All rights reserved.
+          {t.startup.copyright}
         </p>
         <p className="text-xs text-cyan-400/40">
-          Next-Gen Business Intelligence Platform
+          {t.startup.platform}
         </p>
+      </div>
+      
+      {/* 语言切换按钮 */}
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
+        <LanguageSwitch variant="startup" />
       </div>
     </div>
   );

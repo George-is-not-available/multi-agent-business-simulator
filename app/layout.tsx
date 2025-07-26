@@ -6,6 +6,7 @@ import { SWRConfig } from 'swr';
 import Header from '@/components/header';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { siteConfig } from '@/lib/config';
+import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 
 export const metadata: Metadata = {
   title: siteConfig.title,
@@ -30,20 +31,22 @@ export default function RootLayout({
     >
       <body className="min-h-[100dvh] bg-background text-foreground">
         <ThemeProvider>
-          <SWRConfig
-            value={{
-              fallback: {
-                // We do NOT await here
-                // Only components that read this data will suspend
-                '/api/user': getUser()
-              }
-            }}
-          >
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              {children}
-            </div>
-          </SWRConfig>
+          <LanguageProvider>
+            <SWRConfig
+              value={{
+                fallback: {
+                  // We do NOT await here
+                  // Only components that read this data will suspend
+                  '/api/user': getUser()
+                }
+              }}
+            >
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                {children}
+              </div>
+            </SWRConfig>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>
