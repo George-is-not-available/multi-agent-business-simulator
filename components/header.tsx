@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
-import { CircleIcon, LogOut, User as UserIcon } from 'lucide-react';
+import { CircleIcon, LogOut, User as UserIcon, Play, Eye, BarChart3, Users, Shield } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,6 +87,31 @@ export default function Header() {
           <CircleIcon className="h-6 w-6 text-primary" />
           <span className="ml-2 text-xl font-semibold text-foreground">{siteConfig.name}</span>
         </Link>
+        
+        {/* Navigation Links */}
+        <nav className="hidden md:flex items-center space-x-6">
+          <Link href="/game" className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Play className="h-4 w-4" />
+            <span>Play</span>
+          </Link>
+          <Link href="/multiplayer" className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Users className="h-4 w-4" />
+            <span>Multiplayer</span>
+          </Link>
+          <Link href="/replays" className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Eye className="h-4 w-4" />
+            <span>Replays</span>
+          </Link>
+          <Link href="/leaderboard" className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <BarChart3 className="h-4 w-4" />
+            <span>Leaderboard</span>
+          </Link>
+          <Link href="/admin" className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Shield className="h-4 w-4" />
+            <span>Admin</span>
+          </Link>
+        </nav>
+        
         <div className="flex items-center space-x-4">
           <ThemeControls />
           <Suspense fallback={<div className="h-9" />}>

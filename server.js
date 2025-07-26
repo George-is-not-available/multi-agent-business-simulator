@@ -2,6 +2,7 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
+const crypto = require('crypto');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -39,6 +40,41 @@ app.prepare().then(() => {
   // Game rooms storage
   const gameRooms = new Map();
   const playerRooms = new Map();
+  
+  // Game persistence - we'll use API calls to our own endpoints
+  const gamePersistenceAPI = {
+    async saveGameState(roomId, gameState) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/game/state`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId, gameState })
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to save game state: ${response.status}`);
+        }
+        return true;
+      } catch (error) {
+        console.error(`Error saving game state for room ${roomId}:`, error);
+        return false;
+      }
+    },
+    
+    async loadGameState(roomId) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/game/state?roomId=${encodeURIComponent(roomId)}`);
+        if (!response.ok) {
+          if (response.status === 404) return null;
+          throw new Error(`Failed to load game state: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.gameState;
+      } catch (error) {
+        console.error(`Error loading game state for room ${roomId}:`, error);
+        return null;
+      }
+    }
+  };
 
   // Socket.IO event handlers
   io.on('connection', (socket) => {
@@ -52,21 +88,7 @@ app.prepare().then(() => {
 
     // Room management events
     socket.on('createRoom', (roomName, maxPlayers) => {
-      const roomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const room = {
-        id: roomId,
-        name: roomName,
-        players: [],
-        gameState: null,
-        isStarted: false,
-        maxPlayers: Math.min(maxPlayers, 6),
-        createdAt: new Date(),
-        host: socket.data.playerId
-      };
-
-      gameRooms.set(roomId, room);
-      joinRoom(socket, roomId);
-      console.log(`Room created: ${roomId} by ${socket.data.playerId}`);
+      createGameRoom(socket, roomName, maxPlayers);
     });
 
     socket.on('joinRoom', (roomId) => {
@@ -95,6 +117,11 @@ app.prepare().then(() => {
       handleAgentCommand(socket, agentId, command);
     });
 
+    // Game state loading
+    socket.on('loadGameState', (roomId) => {
+      loadGameStateForPlayer(socket, roomId);
+    });
+
     // Chat events
     socket.on('sendMessage', (roomId, message) => {
       handleChatMessage(socket, roomId, message);
@@ -106,6 +133,49 @@ app.prepare().then(() => {
     });
 
     // Helper functions
+    async function createGameRoom(socket, roomName, maxPlayers) {
+      try {
+        const roomId = crypto.randomUUID();
+        
+        // Create room in database using API
+        const response = await fetch('http://localhost:3000/api/game/room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: roomId,
+            name: roomName,
+            hostId: null, // We'll set this later when user system is integrated
+            maxPlayers: Math.min(maxPlayers, 6),
+            isPrivate: false
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to create room in database: ${response.status}`);
+        }
+        
+        // Create room in memory
+        const room = {
+          id: roomId,
+          name: roomName,
+          players: [],
+          gameState: null,
+          isStarted: false,
+          maxPlayers: Math.min(maxPlayers, 6),
+          createdAt: new Date(),
+          host: socket.data.playerId
+        };
+
+        gameRooms.set(roomId, room);
+        joinRoom(socket, roomId);
+        console.log(`Room created: ${roomId} by ${socket.data.playerId}`);
+        
+      } catch (error) {
+        console.error('Error creating game room:', error);
+        socket.emit('error', 'Failed to create room');
+      }
+    }
+
     function joinRoom(socket, roomId) {
       const room = gameRooms.get(roomId);
       if (!room) {
@@ -156,6 +226,9 @@ app.prepare().then(() => {
       const room = gameRooms.get(roomId);
       if (!room) return;
 
+      // Find the leaving player
+      const leavingPlayer = room.players.find(p => p.id === socket.data.playerId);
+      
       // Remove player from room
       room.players = room.players.filter(p => p.id !== socket.data.playerId);
       socket.leave(roomId);
@@ -163,6 +236,11 @@ app.prepare().then(() => {
       // Clear player room data
       socket.data.roomId = undefined;
       playerRooms.delete(socket.data.playerId);
+
+      // Notify other players that this player left
+      if (leavingPlayer) {
+        io.to(roomId).emit('playerLeft', socket.data.playerId, leavingPlayer.name);
+      }
 
       // If room is empty, delete it
       if (room.players.length === 0) {
@@ -182,6 +260,81 @@ app.prepare().then(() => {
       console.log(`Player ${socket.data.playerId} left room ${roomId}`);
     }
 
+    function setPlayerReady(socket, roomId, isReady) {
+      const room = gameRooms.get(roomId);
+      if (!room) {
+        socket.emit('error', 'Room not found');
+        return;
+      }
+
+      const player = room.players.find(p => p.id === socket.data.playerId);
+      if (!player) {
+        socket.emit('error', 'Player not in room');
+        return;
+      }
+
+      player.isReady = isReady;
+      
+      // Notify all players in the room
+      io.to(roomId).emit('roomUpdated', room);
+      console.log(`Player ${socket.data.playerName} ${isReady ? 'ready' : 'not ready'} in room ${roomId}`);
+    }
+
+    function updatePlayerName(socket, name) {
+      const oldName = socket.data.playerName;
+      socket.data.playerName = name;
+      
+      // Update player name in current room
+      if (socket.data.roomId) {
+        const room = gameRooms.get(socket.data.roomId);
+        if (room) {
+          const player = room.players.find(p => p.id === socket.data.playerId);
+          if (player) {
+            player.name = name;
+            io.to(socket.data.roomId).emit('roomUpdated', room);
+          }
+        }
+      }
+      
+      console.log(`Player name updated: ${oldName} -> ${name}`);
+    }
+
+    function kickPlayer(socket, roomId, playerId) {
+      const room = gameRooms.get(roomId);
+      if (!room || room.host !== socket.data.playerId) {
+        socket.emit('error', 'Not authorized to kick players');
+        return;
+      }
+
+      if (playerId === room.host) {
+        socket.emit('error', 'Cannot kick the host');
+        return;
+      }
+
+      const playerIndex = room.players.findIndex(p => p.id === playerId);
+      if (playerIndex === -1) {
+        socket.emit('error', 'Player not found in room');
+        return;
+      }
+
+      // Remove player from room
+      room.players.splice(playerIndex, 1);
+      playerRooms.delete(playerId);
+
+      // Notify the kicked player
+      io.sockets.sockets.forEach(s => {
+        if (s.data.playerId === playerId) {
+          s.data.roomId = undefined;
+          s.leave(roomId);
+          s.emit('error', 'You have been kicked from the room');
+        }
+      });
+
+      // Notify all remaining players
+      io.to(roomId).emit('roomUpdated', room);
+      console.log(`Player ${playerId} kicked from room ${roomId}`);
+    }
+
     function startGame(socket, roomId) {
       const room = gameRooms.get(roomId);
       if (!room) {
@@ -199,6 +352,12 @@ app.prepare().then(() => {
         return;
       }
 
+      const readyPlayers = room.players.filter(p => p.isReady);
+      if (readyPlayers.length < room.players.length) {
+        socket.emit('error', 'All players must be ready to start');
+        return;
+      }
+
       if (room.isStarted) {
         socket.emit('error', 'Game already started');
         return;
@@ -207,6 +366,15 @@ app.prepare().then(() => {
       // Initialize game state
       room.isStarted = true;
       room.gameState = initializeGameState(room.players);
+      room.gameState.currentRoomId = roomId;
+
+      // Save initial game state
+      gamePersistenceAPI.saveGameState(roomId, room.gameState)
+        .then(success => {
+          if (success) {
+            console.log(`Initial game state saved for room ${roomId}`);
+          }
+        });
 
       // Notify all players
       io.to(roomId).emit('gameStarted', room.gameState);
@@ -265,6 +433,12 @@ app.prepare().then(() => {
       if (room.gameState) {
         room.gameState.lastUpdate = new Date();
         io.to(roomId).emit('gameStateUpdated', room.gameState);
+        
+        // Save game state periodically (debounced)
+        clearTimeout(room.saveTimeout);
+        room.saveTimeout = setTimeout(() => {
+          gamePersistenceAPI.saveGameState(roomId, room.gameState);
+        }, 5000); // Save after 5 seconds of inactivity
       }
     }
 
@@ -278,7 +452,7 @@ app.prepare().then(() => {
       io.to(roomId).emit('agentMove', agentId, command.position);
     }
 
-    function handleChatMessage(socket, roomId, message) {
+    async function handleChatMessage(socket, roomId, message) {
       const room = gameRooms.get(roomId);
       if (!room) return;
 
@@ -289,7 +463,39 @@ app.prepare().then(() => {
         timestamp: new Date()
       };
 
+      // Save chat message to database
+      try {
+        await fetch('http://localhost:3000/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId,
+            userId: socket.data.userId || null,
+            playerName: socket.data.playerName,
+            message: message.trim(),
+            messageType: 'chat'
+          })
+        });
+      } catch (error) {
+        console.error('Failed to save chat message:', error);
+      }
+
       io.to(roomId).emit('chatMessage', chatMessage);
+    }
+
+    async function loadGameStateForPlayer(socket, roomId) {
+      try {
+        const gameState = await gamePersistenceAPI.loadGameState(roomId);
+        if (gameState) {
+          socket.emit('gameStateLoaded', gameState);
+          console.log(`Game state loaded for player ${socket.data.playerId} in room ${roomId}`);
+        } else {
+          socket.emit('error', 'No saved game state found');
+        }
+      } catch (error) {
+        console.error(`Error loading game state for player ${socket.data.playerId}:`, error);
+        socket.emit('error', 'Failed to load game state');
+      }
     }
 
     function handleDisconnect(socket) {

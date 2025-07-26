@@ -13,13 +13,40 @@ import { NewsToast, useToast } from '@/components/NewsToast';
 import StartupScreen from '@/components/StartupScreen';
 import AICountdown from '@/components/AICountdown';
 import EliminationCountdown from '@/components/EliminationCountdown';
+import { GameModeConfig, gameModes } from '@/lib/game/gameModes';
+import { useRouter } from 'next/navigation';
+import GameModeIndicator from '@/components/GameModeIndicator';
 
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import GameChat from '@/components/GameChat';
 
 export default function GamePage() {
   const [showStartup, setShowStartup] = useState(true);
   const [startupTimeout, setStartupTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [gameMode, setGameMode] = useState<GameModeConfig | null>(null);
+  const [chatMinimized, setChatMinimized] = useState(false);
+  const router = useRouter();
   const { t } = useLanguage();
+  
+  // 读取游戏模式配置
+  useEffect(() => {
+    const savedMode = localStorage.getItem('selectedGameMode');
+    if (savedMode) {
+      try {
+        const mode = JSON.parse(savedMode);
+        setGameMode(mode);
+        console.log('Game mode loaded:', mode);
+      } catch (error) {
+        console.error('Failed to parse game mode:', error);
+        // 使用默认的新手模式
+        setGameMode(gameModes[0]);
+      }
+    } else {
+      // 如果没有选择模式，重定向到模式选择页面
+      router.push('/game-mode');
+      return;
+    }
+  }, [router]);
   
   // Check if startup screen was already shown in this session
   useEffect(() => {
@@ -58,7 +85,7 @@ export default function GamePage() {
     eliminationEnabled,
     gameStartTime,
     ELIMINATION_GRACE_PERIOD
-  } = useGameState();
+  } = useGameState(gameMode?.config);
   
   const { notifications, dismiss } = useToast();
   
@@ -96,6 +123,15 @@ export default function GamePage() {
   // 如果仍在显示启动屏幕，则只显示启动屏幕
   if (showStartup) {
     return <StartupScreen onComplete={handleStartupComplete} />;
+  }
+  
+  // 如果游戏模式还未加载，显示加载状态
+  if (!gameMode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-black to-cyan-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading game mode...</div>
+      </div>
+    );
   }
 
   const getBuildingIcon = (type: string) => {
@@ -163,6 +199,17 @@ export default function GamePage() {
             gracePeriod={ELIMINATION_GRACE_PERIOD}
             eliminationEnabled={eliminationEnabled}
           />
+        </div>
+        
+        {/* 游戏模式指示器 */}
+        <div className="mb-4 flex items-center space-x-4">
+          <GameModeIndicator gameMode={gameMode} />
+          <button
+            onClick={() => router.push('/game-mode')}
+            className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 backdrop-blur-sm rounded-lg transition-colors text-white font-medium border border-blue-500/30 hover:border-blue-400/50"
+          >
+            更换模式
+          </button>
         </div>
         
         {/* 顶部状态栏 */}
@@ -562,6 +609,14 @@ export default function GamePage() {
       <NewsToast
         notifications={notifications}
         onDismiss={dismiss}
+      />
+      
+      {/* Chat System */}
+      <GameChat
+        roomId="single-player"
+        isMinimized={chatMinimized}
+        onToggleMinimize={() => setChatMinimized(!chatMinimized)}
+        className={chatMinimized ? '' : 'fixed bottom-4 right-4 w-80 h-96 z-50'}
       />
     </div>
   );

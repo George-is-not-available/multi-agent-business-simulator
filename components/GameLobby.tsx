@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getSocketClient } from '@/lib/websocket/client';
 import type { GameRoom } from '@/lib/game/types';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import GameChat from './GameChat';
+import MiniLeaderboard from './MiniLeaderboard';
 
 interface GameLobbyProps {
   onGameStart: (gameState: any) => void;
@@ -11,6 +14,7 @@ interface GameLobbyProps {
 
 export default function GameLobby({ onGameStart }: GameLobbyProps) {
   const { language, t } = useLanguage();
+  const router = useRouter();
   const [socketClient] = useState(() => getSocketClient());
   const [rooms, setRooms] = useState<GameRoom[]>([]);
   const [currentRoom, setCurrentRoom] = useState<GameRoom | null>(null);
@@ -19,6 +23,7 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string>('');
+  const [chatMinimized, setChatMinimized] = useState(false);
 
   useEffect(() => {
     // Set up socket callbacks
@@ -73,8 +78,13 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
     }
   };
 
-  const handleJoinRoom = (roomId: string) => {
-    socketClient.joinRoom(roomId);
+  const handleJoinRoom = (roomId: string, password?: string) => {
+    socketClient.joinRoom(roomId, password);
+  };
+
+  const handleSpectateRoom = (roomId: string, password?: string) => {
+    // Navigate to spectator page
+    router.push(`/spectate/${roomId}`);
   };
 
   const handleLeaveRoom = () => {
@@ -122,9 +132,9 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
 
         {!currentRoom ? (
           // Room selection view
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Available Rooms */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
+            <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
               <h2 className="text-2xl font-semibold mb-4 text-blue-300">{t.multiplayer.availableRooms}</h2>
               
               <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -140,16 +150,53 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
                         <div>
                           <h3 className="font-medium text-blue-200">{room.name}</h3>
                           <p className="text-sm text-gray-400">
-                            {room.players.length}/{room.maxPlayers} {t.multiplayer.players} • {t.multiplayer.host}: {room.players.find(p => p.id === room.host)?.name}
+                            {room.players.length}/{room.maxPlayers} {t.multiplayer.players} • {room.spectators?.length || 0} spectators • {t.multiplayer.host}: {room.players.find(p => p.id === room.host)?.name}
                           </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-xs text-green-400">{room.players.filter(p => p.isReady).length} ready</span>
+                            </div>
+                            {room.isPrivate && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                <span className="text-xs text-yellow-400">Private</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleJoinRoom(room.id)}
-                          disabled={room.players.length >= room.maxPlayers}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
-                        >
-                          {room.players.length >= room.maxPlayers ? t.multiplayer.full : t.multiplayer.join}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              if (room.isPrivate) {
+                                const password = prompt('Enter room password:');
+                                if (password) handleJoinRoom(room.id, password);
+                              } else {
+                                handleJoinRoom(room.id);
+                              }
+                            }}
+                            disabled={room.players.length >= room.maxPlayers}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
+                          >
+                            {room.players.length >= room.maxPlayers ? t.multiplayer.full : t.multiplayer.join}
+                          </button>
+                          {room.settings?.allowSpectators && (
+                            <button
+                              onClick={() => {
+                                if (room.isPrivate) {
+                                  const password = prompt('Enter room password:');
+                                  if (password) handleSpectateRoom(room.id, password);
+                                } else {
+                                  handleSpectateRoom(room.id);
+                                }
+                              }}
+                              disabled={room.spectators?.length >= (room.settings?.maxSpectators || 0)}
+                              className="px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
+                            >
+                              👁️ {room.spectators?.length >= (room.settings?.maxSpectators || 0) ? 'Full' : 'Watch'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -204,10 +251,35 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
                     </select>
                   </div>
 
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="private-room"
+                      checked={isPrivateRoom}
+                      onChange={(e) => setIsPrivateRoom(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 bg-slate-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <label htmlFor="private-room" className="text-sm font-medium text-blue-200">Private Room</label>
+                  </div>
+                  
+                  {isPrivateRoom && (
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">Password</label>
+                      <input
+                        type="password"
+                        value={gamePassword}
+                        onChange={(e) => setGamePassword(e.target.value)}
+                        className="w-full p-3 bg-slate-700 border border-blue-400/30 rounded-lg focus:outline-none focus:border-blue-400 text-white"
+                        placeholder="Enter room password"
+                        maxLength={20}
+                      />
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
                     <button
                       onClick={handleCreateRoom}
-                      disabled={!roomName.trim()}
+                      disabled={!roomName.trim() || (isPrivateRoom && !gamePassword.trim())}
                       className="flex-1 py-3 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-lg transition-all font-semibold"
                     >
                       {t.multiplayer.create}
@@ -221,6 +293,11 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
                   </div>
                 </div>
               )}
+            </div>
+            
+            {/* Mini Leaderboard */}
+            <div className="lg:col-span-1">
+              <MiniLeaderboard />
             </div>
           </div>
         ) : (
@@ -258,22 +335,65 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
                     <div className="flex items-center gap-2 mt-1">
                       <div className={`w-2 h-2 rounded-full ${player.isOnline ? 'bg-green-400' : 'bg-gray-400'}`}></div>
                       <span className="text-gray-400 text-xs">{player.isOnline ? t.multiplayer.online : t.multiplayer.offline}</span>
+                      <div className={`w-2 h-2 rounded-full ml-2 ${player.isReady ? 'bg-blue-500' : 'bg-gray-500'}`} title={player.isReady ? 'Ready' : 'Not Ready'}></div>
+                      <span className="text-gray-400 text-xs">{player.isReady ? 'Ready' : 'Not Ready'}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Player Settings */}
+            <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-medium text-blue-300 mb-3">Player Settings</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full px-3 py-2 bg-slate-700 border border-blue-400/30 rounded-lg text-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                    maxLength={20}
+                  />
+                </div>
+                <button
+                  onClick={handleUpdatePlayerName}
+                  disabled={!playerName.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
+                >
+                  Update Name
+                </button>
+                <button
+                  onClick={handleToggleReady}
+                  className={`px-4 py-2 rounded-lg transition-colors text-sm ${
+                    isPlayerReady 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-gray-600 hover:bg-gray-700'
+                  }`}
+                >
+                  {isPlayerReady ? '✓ Ready' : 'Not Ready'}
+                </button>
+              </div>
+            </div>
+
             {/* Game controls */}
             <div className="flex justify-center">
               {isHost ? (
-                <button
-                  onClick={handleStartGame}
-                  disabled={!canStartGame}
-                  className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-lg transition-all transform hover:scale-105 font-semibold text-lg"
-                >
-                  {canStartGame ? t.multiplayer.startGame : t.multiplayer.needMorePlayers}
-                </button>
+                <div className="text-center">
+                  <button
+                    onClick={handleStartGame}
+                    disabled={!canStartGame}
+                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-lg transition-all transform hover:scale-105 font-semibold text-lg"
+                  >
+                    {canStartGame ? t.multiplayer.startGame : `Waiting for players (${readyPlayersCount}/${currentRoom.players.length} ready)`}
+                  </button>
+                  {currentRoom.players.length >= 2 && readyPlayersCount < currentRoom.players.length && (
+                    <p className="text-yellow-300 text-sm mt-2">
+                      ⚠️ All players must be ready to start
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="text-gray-400 text-center">{t.multiplayer.waitingForHost}</p>
               )}
@@ -284,6 +404,16 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
               <p>{t.multiplayer.gameWillStart}</p>
             </div>
           </div>
+        )}
+        
+        {/* Chat System - only show when in a room */}
+        {currentRoom && (
+          <GameChat
+            roomId={currentRoom.id}
+            isMinimized={chatMinimized}
+            onToggleMinimize={() => setChatMinimized(!chatMinimized)}
+            className={chatMinimized ? '' : 'fixed bottom-4 right-4 w-80 h-96 z-50'}
+          />
         )}
       </div>
     </div>

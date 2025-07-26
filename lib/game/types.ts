@@ -74,6 +74,7 @@ export interface GameState {
   startTime: Date;
   eliminationStartTime?: Date;
   lastUpdate: Date;
+  currentRoomId?: string;
 }
 
 // Multiplayer-specific types
@@ -83,24 +84,39 @@ export interface Player {
   company: Company | null;
   isActive: boolean;
   isOnline: boolean;
+  isReady: boolean;
   joinedAt: Date;
   lastSeen?: Date;
+}
+
+export interface Spectator {
+  id: string;
+  name: string;
+  joinedAt: Date;
+  lastSeen?: Date;
+  isOnline: boolean;
 }
 
 export interface GameRoom {
   id: string;
   name: string;
   players: Player[];
+  spectators: Spectator[];
   gameState: GameState | null;
   isStarted: boolean;
   maxPlayers: number;
   createdAt: Date;
   host: string;
+  isPrivate: boolean;
+  password?: string;
   settings?: {
     startingAssets?: number;
     gracePeriod?: number;
     aiOpponents?: boolean;
     maxAiOpponents?: number;
+    allowSpectators?: boolean;
+    maxSpectators?: number;
+    gameMode?: string;
   };
 }
 

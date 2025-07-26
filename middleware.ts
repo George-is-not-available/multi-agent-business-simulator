@@ -1,11 +1,25 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { signToken, verifyToken } from '@/lib/auth/session';
+import { securityMiddleware } from '@/lib/security/middleware';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Apply security middleware first
+  const securityResult = await securityMiddleware(request, {
+    enableRateLimit: true,
+    enableCSRF: false, // Disabled for now to avoid breaking existing functionality
+    enableAuth: false, // Disabled for now to avoid breaking existing functionality
+    enableSecurityHeaders: true
+  });
+  
+  if (securityResult) {
+    return securityResult;
+  }
+  
+  // Original session handling logic
   const sessionCookie = request.cookies.get('session');
-
   let res = NextResponse.next();
 
   if (sessionCookie && request.method === 'GET') {
@@ -20,7 +34,7 @@ export async function middleware(request: NextRequest) {
           expires: expiresInOneDay.toISOString()
         }),
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         expires: expiresInOneDay
       });

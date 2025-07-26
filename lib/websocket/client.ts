@@ -20,6 +20,13 @@ export type WebSocketEventCallback = {
   // Chat events
   onChatMessage?: (message: { playerId: string; playerName: string; message: string; timestamp: Date }) => void;
   
+  // Player events
+  onPlayerLeft?: (playerId: string, playerName: string) => void;
+  
+  // Spectator events
+  onSpectatorJoined?: (spectatorId: string, spectatorName: string) => void;
+  onSpectatorLeft?: (spectatorId: string, spectatorName: string) => void;
+  
   // Error events
   onError?: (message: string) => void;
 };
@@ -102,6 +109,20 @@ export class GameWebSocketClient {
       this.callbacks.onChatMessage?.(message);
     });
 
+    // Player events
+    this.socket.on('playerLeft', (playerId, playerName) => {
+      this.callbacks.onPlayerLeft?.(playerId, playerName);
+    });
+
+    // Spectator events
+    this.socket.on('spectatorJoined', (spectatorId, spectatorName) => {
+      this.callbacks.onSpectatorJoined?.(spectatorId, spectatorName);
+    });
+
+    this.socket.on('spectatorLeft', (spectatorId, spectatorName) => {
+      this.callbacks.onSpectatorLeft?.(spectatorId, spectatorName);
+    });
+
     // Error events
     this.socket.on('error', (message) => {
       console.error('Server error:', message);
@@ -115,12 +136,20 @@ export class GameWebSocketClient {
   }
 
   // Room management
-  public createRoom(roomName: string, maxPlayers: number = 4) {
-    this.socket.emit('createRoom', roomName, maxPlayers);
+  public createRoom(roomName: string, maxPlayers: number = 4, password?: string) {
+    this.socket.emit('createRoom', roomName, maxPlayers, password);
   }
 
-  public joinRoom(roomId: string) {
-    this.socket.emit('joinRoom', roomId);
+  public joinRoom(roomId: string, password?: string) {
+    this.socket.emit('joinRoom', roomId, password);
+  }
+
+  public joinAsSpectator(roomId: string, password?: string) {
+    this.socket.emit('joinAsSpectator', roomId, password);
+  }
+
+  public leaveAsSpectator(roomId: string) {
+    this.socket.emit('leaveAsSpectator', roomId);
   }
 
   public leaveRoom(roomId: string) {
@@ -142,6 +171,19 @@ export class GameWebSocketClient {
 
   public sendAgentCommand(agentId: string, command: any) {
     this.socket.emit('agentCommand', agentId, command);
+  }
+
+  // Player management
+  public setPlayerReady(roomId: string, isReady: boolean) {
+    this.socket.emit('setPlayerReady', roomId, isReady);
+  }
+
+  public updatePlayerName(name: string) {
+    this.socket.emit('updatePlayerName', name);
+  }
+
+  public kickPlayer(roomId: string, playerId: string) {
+    this.socket.emit('kickPlayer', roomId, playerId);
   }
 
   // Chat

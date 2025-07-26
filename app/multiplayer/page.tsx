@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import GameLobby from '@/components/GameLobby';
 import Game from '@/components/Game'; // Assuming we'll update the existing game component
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import useGamePersistence from '@/lib/game/useGamePersistence';
+import GameChat from '@/components/GameChat';
 
 import type { GameState } from '@/lib/game/types';
 
@@ -80,9 +82,26 @@ interface MultiplayerGameProps {
 function MultiplayerGame({ initialGameState, onGameEnd }: MultiplayerGameProps) {
   const { t } = useLanguage();
   const [gameState, setGameState] = useState(initialGameState);
+  const [chatMinimized, setChatMinimized] = useState(false);
+  const { saveGameState, loadGameState, isSaving, error, lastSaved } = useGamePersistence(initialGameState.currentRoomId || '');
 
-  // This is a placeholder - we'll need to integrate this with the WebSocket system
-  // and the existing game logic
+  // Auto-save game state every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (gameState.isActive) {
+        saveGameState(gameState);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [gameState, saveGameState]);
+
+  // Save game state when the game ends
+  useEffect(() => {
+    if (!gameState.isActive && gameState.winner) {
+      saveGameState(gameState);
+    }
+  }, [gameState.isActive, gameState.winner, saveGameState]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
@@ -144,25 +163,37 @@ function MultiplayerGame({ initialGameState, onGameEnd }: MultiplayerGameProps) 
                 <p className="text-gray-300">Turn: {gameState.currentTurn}</p>
                 <p className="text-gray-300">Phase: {gameState.gamePhase}</p>
                 <p className="text-gray-300">Active: {gameState.isActive ? 'Yes' : 'No'}</p>
+                
+                {/* Save status */}
+                <div className="flex items-center space-x-2 text-xs">
+                  {isSaving && (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-400"></div>
+                      <span className="text-blue-400">Saving...</span>
+                    </>
+                  )}
+                  {!isSaving && lastSaved && (
+                    <>
+                      <div className="h-2 w-2 bg-green-400 rounded-full"></div>
+                      <span className="text-green-400">Auto-saved</span>
+                    </>
+                  )}
+                  {error && (
+                    <>
+                      <div className="h-2 w-2 bg-red-400 rounded-full"></div>
+                      <span className="text-red-400">Save failed</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Chat (placeholder) */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-blue-500/30">
-              <h3 className="text-lg font-semibold text-blue-300 mb-3">Chat</h3>
-              <div className="bg-slate-700/50 rounded h-32 mb-3 p-2 overflow-y-auto">
-                <p className="text-gray-400 text-sm">Chat messages will appear here</p>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={t.multiplayer.typeMessage}
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-blue-400/30 rounded text-white text-sm"
-                />
-                <button className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm">
-                  {t.multiplayer.sendMessage}
-                </button>
-              </div>
+            {/* Chat System */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-blue-500/30">
+              <GameChat
+                roomId={gameState.currentRoomId || 'multiplayer'}
+                className="h-64"
+              />
             </div>
           </div>
         </div>

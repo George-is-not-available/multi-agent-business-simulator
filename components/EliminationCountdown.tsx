@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface EliminationCountdownProps {
-  gameStartTime: number;
+  gameStartTime: number | null;
   gracePeriod: number;
   eliminationEnabled: boolean;
 }
@@ -18,7 +18,7 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
   const { t } = useLanguage();
 
   useEffect(() => {
-    if (eliminationEnabled) return;
+    if (eliminationEnabled || !gameStartTime) return;
 
     const updateCountdown = () => {
       const currentTime = Date.now();
@@ -40,6 +40,7 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
   };
 
   const getProgressPercentage = (): number => {
+    if (!gameStartTime) return 0;
     const elapsed = Date.now() - gameStartTime;
     return Math.min(100, (elapsed / gracePeriod) * 100);
   };
@@ -55,6 +56,22 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
         </div>
         <div className="mt-1 text-xs text-red-400/80">
           {t.competition.assetsZeroEliminated}
+        </div>
+      </div>
+    );
+  }
+  
+  if (!gameStartTime) {
+    return (
+      <div className="bg-gradient-to-r from-blue-900/30 via-blue-800/20 to-blue-900/30 backdrop-blur-sm border border-blue-500/30 rounded-lg p-3">
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse shadow-lg shadow-blue-400/50"></div>
+          <span className="text-blue-300 font-medium text-sm">
+            🛡️ {t.competition.safetyPeriod}
+          </span>
+        </div>
+        <div className="mt-1 text-xs text-blue-400/80">
+          准备中...
         </div>
       </div>
     );

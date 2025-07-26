@@ -1,16 +1,24 @@
 import { Server } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import type { GameState, Player, Company, Agent } from '../game/types';
+import type { GameState, Player, Company, Agent, Spectator } from '../game/types';
 
 export interface GameRoom {
   id: string;
   name: string;
   players: Player[];
+  spectators: Spectator[];
   gameState: GameState | null;
   isStarted: boolean;
   maxPlayers: number;
   createdAt: Date;
   host: string;
+  isPrivate: boolean;
+  password?: string;
+  settings: {
+    allowSpectators: boolean;
+    maxSpectators: number;
+    gameMode: string;
+  };
 }
 
 export interface ServerToClientEvents {
@@ -32,17 +40,30 @@ export interface ServerToClientEvents {
   // Chat events
   chatMessage: (message: { playerId: string; playerName: string; message: string; timestamp: Date }) => void;
   
+  // Spectator events
+  spectatorJoined: (spectatorId: string, spectatorName: string) => void;
+  spectatorLeft: (spectatorId: string, spectatorName: string) => void;
+  
   // Error events
   error: (message: string) => void;
 }
 
 export interface ClientToServerEvents {
   // Room management
-  createRoom: (roomName: string, maxPlayers: number) => void;
-  joinRoom: (roomId: string) => void;
+  createRoom: (roomName: string, maxPlayers: number, password?: string) => void;
+  joinRoom: (roomId: string, password?: string) => void;
   leaveRoom: (roomId: string) => void;
   listRooms: () => void;
   startGame: (roomId: string) => void;
+  
+  // Player management
+  setPlayerReady: (roomId: string, isReady: boolean) => void;
+  updatePlayerName: (name: string) => void;
+  kickPlayer: (roomId: string, playerId: string) => void;
+  
+  // Spectator management
+  joinAsSpectator: (roomId: string, password?: string) => void;
+  leaveAsSpectator: (roomId: string) => void;
   
   // Game actions
   playerAction: (action: any) => void;
@@ -60,6 +81,7 @@ export interface SocketData {
   playerId: string;
   playerName: string;
   roomId?: string;
+  isSpectator?: boolean;
 }
 
 export class GameSocketServer {
@@ -136,11 +158,18 @@ export class GameSocketServer {
       id: roomId,
       name: roomName,
       players: [],
+      spectators: [],
       gameState: null,
       isStarted: false,
       maxPlayers: Math.min(maxPlayers, 6), // Max 6 players
       createdAt: new Date(),
-      host: socket.data.playerId
+      host: socket.data.playerId,
+      isPrivate: false,
+      settings: {
+        allowSpectators: true,
+        maxSpectators: 10,
+        gameMode: 'standard'
+      }
     };
 
     this.rooms.set(roomId, room);
@@ -207,11 +236,11 @@ export class GameSocketServer {
     socket.data.roomId = undefined;
     this.playerRooms.delete(socket.data.playerId);
 
-    // If room is empty, delete it
-    if (room.players.length === 0) {
+    // If room is empty (no players and no spectators), delete it
+    if (room.players.length === 0 && room.spectators.length === 0) {
       this.rooms.delete(roomId);
       console.log(`Room ${roomId} deleted (empty)`);
-    } else {
+    } else if (room.players.length > 0) {
       // If host left, assign new host
       if (room.host === socket.data.playerId && room.players.length > 0) {
         room.host = room.players[0].id;
@@ -344,11 +373,111 @@ export class GameSocketServer {
     this.io.to(roomId).emit('chatMessage', chatMessage);
   }
 
+  private joinAsSpectator(socket: any, roomId: string, password?: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      socket.emit('error', 'Room not found');
+      return;
+    }
+
+    if (!room.settings.allowSpectators) {
+      socket.emit('error', 'Spectators not allowed in this room');
+      return;
+    }
+
+    if (room.spectators.length >= room.settings.maxSpectators) {
+      socket.emit('error', 'Maximum number of spectators reached');
+      return;
+    }
+
+    if (room.password && room.password !== password) {
+      socket.emit('error', 'Invalid password');
+      return;
+    }
+
+    // Check if user is already a player in this room
+    const existingPlayer = room.players.find(p => p.id === socket.data.playerId);
+    if (existingPlayer) {
+      socket.emit('error', 'Already a player in this room');
+      return;
+    }
+
+    // Check if user is already a spectator in this room
+    const existingSpectator = room.spectators.find(s => s.id === socket.data.playerId);
+    if (existingSpectator) {
+      socket.emit('error', 'Already spectating this room');
+      return;
+    }
+
+    // Add as spectator
+    const spectator: Spectator = {
+      id: socket.data.playerId,
+      name: socket.data.playerName,
+      joinedAt: new Date(),
+      isOnline: true
+    };
+
+    room.spectators.push(spectator);
+    socket.data.roomId = roomId;
+    socket.data.isSpectator = true;
+    this.playerRooms.set(socket.data.playerId, roomId);
+    
+    // Join socket room
+    socket.join(roomId);
+    
+    // Notify all room members
+    this.io.to(roomId).emit('spectatorJoined', spectator.id, spectator.name);
+    this.io.to(roomId).emit('roomUpdated', room);
+    
+    // Send room info to new spectator
+    socket.emit('roomJoined', room);
+    
+    console.log(`Spectator ${spectator.name} joined room ${roomId}`);
+  }
+
+  private leaveAsSpectator(socket: any, roomId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      socket.emit('error', 'Room not found');
+      return;
+    }
+
+    const spectatorIndex = room.spectators.findIndex(s => s.id === socket.data.playerId);
+    if (spectatorIndex === -1) {
+      socket.emit('error', 'Not a spectator in this room');
+      return;
+    }
+
+    const spectator = room.spectators[spectatorIndex];
+    room.spectators.splice(spectatorIndex, 1);
+    
+    // Update socket data
+    socket.data.roomId = undefined;
+    socket.data.isSpectator = false;
+    this.playerRooms.delete(socket.data.playerId);
+    
+    // Leave socket room
+    socket.leave(roomId);
+    
+    // Notify all room members
+    this.io.to(roomId).emit('spectatorLeft', spectator.id, spectator.name);
+    this.io.to(roomId).emit('roomUpdated', room);
+    
+    // Send confirmation to former spectator
+    socket.emit('roomLeft', room);
+    
+    console.log(`Spectator ${spectator.name} left room ${roomId}`);
+  }
+
   private handleDisconnect(socket: any) {
     console.log('Player disconnected:', socket.id);
     
     if (socket.data.roomId) {
-      this.leaveRoom(socket, socket.data.roomId);
+      if (socket.data.isSpectator) {
+        this.leaveAsSpectator(socket, socket.data.roomId);
+      } else {
+        this.leaveRoom(socket, socket.data.roomId);
+      }
     }
   }
 

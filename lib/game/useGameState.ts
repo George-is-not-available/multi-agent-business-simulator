@@ -8,6 +8,7 @@ import { CompetitionEngine, CompetitionEvent, CompetitionAnalytics } from './com
 export type { CompetitionEvent, CompetitionAnalytics };
 import { ToastManager } from '@/components/NewsToast';
 import { getAIDecisionEngine, AIDecision } from '@/lib/ai/aiDecisionEngine';
+import { StatisticsManager } from './statistics';
 
 export interface Building {
   id: number;
@@ -62,103 +63,167 @@ export interface GameState {
   analytics: CompetitionAnalytics;
 }
 
-export const useGameState = () => {
+interface GameModeConfig {
+  startingAssets: number;
+  gracePeriod: number;
+  gameSpeed: number;
+  aiCount: number;
+  aiAggressiveness: number;
+  aiDecisionDelay: number;
+  economicVolatility: number;
+  stockMarketVariability: number;
+  allowSpectators: boolean;
+  maxPlayers: number;
+  enablePowerUps: boolean;
+  specialRules?: { type: string; value: any }[];
+}
+
+export const useGameState = (gameModeConfig?: GameModeConfig) => {
   const [stockMarket] = useState(() => new StockMarket());
   const competitionEngine = useRef(new CompetitionEngine());
   const previousGameState = useRef<GameState | null>(null);
   const aiDecisionEngine = useRef(getAIDecisionEngine());
-  const [aiDecisionCooldown, setAiDecisionCooldown] = useState(50); // 5秒延迟开始 (50 * 100ms = 5000ms)
-  const [gameStartTime] = useState(Date.now()); // 游戏开始时间
-  const [eliminationEnabled, setEliminationEnabled] = useState(false); // 淘汰机制是否启用
-  const ELIMINATION_GRACE_PERIOD = 10 * 60 * 1000; // 10分钟宽限期 (10 * 60 * 1000ms)
+  // 使用游戏模式配置或默认值
+  const initialAiDecisionDelay = gameModeConfig ? gameModeConfig.aiDecisionDelay / 100 : 50;
+  const gracePeriod = gameModeConfig ? gameModeConfig.gracePeriod * 1000 : 10 * 60 * 1000;
+  const startingAssets = gameModeConfig ? gameModeConfig.startingAssets : 1000000;
+  const aiCount = gameModeConfig ? gameModeConfig.aiCount : 2;
+  const aiAggressiveness = gameModeConfig ? gameModeConfig.aiAggressiveness : 50;
   
-  const [gameState, setGameState] = useState<GameState>({
-    companies: [
-      {
-        id: 'player',
-        name: '我的企业',
-        assets: 1000000,
-        employees: 10,
-        buildings: [],
-        type: 'centralized',
-        isPlayer: true,
-        status: 'active'
-      },
-      {
-        id: 'ai_1',
-        name: '竞争对手A',
-        assets: 800000,
-        employees: 8,
-        buildings: [3],
-        type: 'centralized',
+  const [aiDecisionCooldown, setAiDecisionCooldown] = useState(initialAiDecisionDelay);
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null); // 游戏开始时间
+  
+  // Set game start time on client-side only to avoid hydration issues
+  useEffect(() => {
+    setGameStartTime(Date.now());
+  }, []);
+  const [gameEndTime, setGameEndTime] = useState<number | null>(null);
+  const [eliminationEnabled, setEliminationEnabled] = useState(false); // 淘汰机制是否启用
+  const ELIMINATION_GRACE_PERIOD = gracePeriod;
+  
+  // 动态生成初始游戏状态
+  const generateInitialGameState = (): GameState => {
+    const playerCompany = {
+      id: 'player',
+      name: '我的企业',
+      assets: startingAssets,
+      employees: 10,
+      buildings: [],
+      type: 'centralized' as const,
+      isPlayer: true,
+      status: 'active' as const
+    };
+    
+    // Create stable initial AI companies to avoid hydration issues
+    const aiCompanies = [];
+    for (let i = 0; i < aiCount; i++) {
+      aiCompanies.push({
+        id: `ai_${i + 1}`,
+        name: `竞争对手${String.fromCharCode(65 + i)}`,
+        assets: startingAssets, // Will be randomized on client-side
+        employees: 10, // Will be randomized on client-side
+        buildings: i === 0 ? [3] : [], // 第一个AI拥有一个建筑
+        type: 'centralized' as const, // Will be randomized on client-side
         isPlayer: false,
-        status: 'active'
-      },
-      {
-        id: 'ai_2',
-        name: '竞争对手B',
-        assets: 1200000,
-        employees: 12,
-        buildings: [],
-        type: 'decentralized',
-        isPlayer: false,
-        status: 'active'
-      }
-    ],
-    buildings: [
-      { id: 1, type: 'trade_center', x: 100, y: 100, name: '国际贸易中心', level: 1, income: 10000 },
-      { id: 2, type: 'hospital', x: 200, y: 150, name: '中心医院', level: 1, income: 5000 },
-      { id: 3, type: 'company', x: 300, y: 200, name: '竞争对手A总部', owner: 'ai_1', level: 1, income: 8000 },
-      { id: 4, type: 'real_estate', x: 400, y: 250, name: '房地产交易所', level: 1, income: 15000 },
-      { id: 5, type: 'hotel', x: 500, y: 300, name: '豪华酒店', level: 1, income: 12000 },
-      { id: 6, type: 'apartment', x: 150, y: 350, name: '高档公寓', level: 1, income: 7000 }
-    ],
-    agents: [
-      { 
-        id: 1, 
-        x: 150, 
-        y: 150, 
-        status: 'idle', 
-        target: null, 
-        company: 'player',
-        skills: { negotiation: 70, espionage: 50, management: 80 }
-      },
-      { 
-        id: 2, 
-        x: 250, 
-        y: 200, 
-        status: 'idle', 
-        target: null, 
-        company: 'ai_1',
-        skills: { negotiation: 60, espionage: 70, management: 65 }
-      },
-      { 
-        id: 3, 
-        x: 350, 
-        y: 300, 
-        status: 'idle', 
-        target: null, 
-        company: 'ai_2',
-        skills: { negotiation: 80, espionage: 40, management: 75 }
-      }
-    ],
-    currentTurn: 1,
-    gameStatus: 'playing',
-    selectedAgent: null,
-    selectedBuilding: null,
-    stockMarket,
-    winner: null,
-    victoryReason: '',
-    recentEvents: [],
-    analytics: {
-      totalTransactions: 0,
-      averageAssetGrowth: 0,
-      competitionIntensity: 0,
-      marketShare: {},
-      buildingControl: {},
-      riskLevel: 0
+        status: 'active' as const
+      });
     }
-  });
+    
+    return {
+      companies: [playerCompany, ...aiCompanies],
+      buildings: [
+        { id: 1, type: 'trade_center', x: 100, y: 100, name: '国际贸易中心', level: 1, income: 10000 },
+        { id: 2, type: 'hospital', x: 200, y: 150, name: '中心医院', level: 1, income: 5000 },
+        { id: 3, type: 'company', x: 300, y: 200, name: '竞争对手A总部', owner: 'ai_1', level: 1, income: 8000 },
+        { id: 4, type: 'real_estate', x: 400, y: 250, name: '房地产交易所', level: 1, income: 15000 },
+        { id: 5, type: 'hotel', x: 500, y: 300, name: '豪华酒店', level: 1, income: 12000 },
+        { id: 6, type: 'apartment', x: 150, y: 350, name: '高档公寓', level: 1, income: 7000 }
+      ],
+      agents: [
+        { 
+          id: 1, 
+          x: 150, 
+          y: 150, 
+          status: 'idle', 
+          target: null, 
+          company: 'player',
+          skills: { negotiation: 70, espionage: 50, management: 80 }
+        },
+        ...aiCompanies.map((company, index) => ({
+          id: index + 2,
+          x: 250 + index * 100,
+          y: 200 + index * 100,
+          status: 'idle' as const,
+          target: null,
+          company: company.id,
+          skills: {
+            negotiation: 70, // Will be randomized on client-side
+            espionage: 50, // Will be randomized on client-side
+            management: 80 // Will be randomized on client-side
+          }
+        }))
+      ],
+      currentTurn: 1,
+      gameStatus: 'playing',
+      selectedAgent: null,
+      selectedBuilding: null,
+      stockMarket,
+      winner: null,
+      victoryReason: '',
+      recentEvents: [],
+      analytics: {
+        totalTransactions: 0,
+        averageAssetGrowth: 0,
+        competitionIntensity: 0,
+        marketShare: {},
+        buildingControl: {},
+        riskLevel: 0
+      }
+    };
+  };
+  
+  const [gameState, setGameState] = useState<GameState>(() => generateInitialGameState());
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Initialize random values on client-side only to prevent hydration issues
+  useEffect(() => {
+    if (!isInitialized) {
+      setGameState(prev => {
+        const newState = { ...prev };
+        
+        // Randomize AI companies
+        newState.companies = newState.companies.map(company => {
+          if (!company.isPlayer) {
+            return {
+              ...company,
+              assets: Math.floor(startingAssets * (0.8 + Math.random() * 0.4)), // 80%-120% 玩家资产
+              employees: 8 + Math.floor(Math.random() * 8), // 8-16 员工
+              type: Math.random() > 0.5 ? 'centralized' as const : 'decentralized' as const,
+            };
+          }
+          return company;
+        });
+        
+        // Randomize AI agent skills
+        newState.agents = newState.agents.map(agent => {
+          if (agent.company !== 'player') {
+            return {
+              ...agent,
+              skills: {
+                negotiation: 50 + Math.floor(Math.random() * 40),
+                espionage: 40 + Math.floor(Math.random() * 50),
+                management: 60 + Math.floor(Math.random() * 30)
+              }
+            };
+          }
+          return agent;
+        });
+        
+        return newState;
+      });
+      setIsInitialized(true);
+    }
+  }, [isInitialized, startingAssets]);
 
   // 移动智能体
   const moveAgent = useCallback((agentId: number, targetX: number, targetY: number, actionType: 'purchase_building' | 'recruit_employee' | 'attack' | 'intelligence' | 'move' = 'move', targetBuildingId?: number) => {
@@ -583,9 +648,9 @@ export const useGameState = () => {
 
         // 检查是否到了启用淘汰机制的时间
         const currentTime = Date.now();
-        const timeSinceStart = currentTime - gameStartTime;
+        const timeSinceStart = gameStartTime ? currentTime - gameStartTime : 0;
         
-        if (timeSinceStart >= ELIMINATION_GRACE_PERIOD && !eliminationEnabled) {
+        if (gameStartTime && timeSinceStart >= ELIMINATION_GRACE_PERIOD && !eliminationEnabled) {
           setEliminationEnabled(true);
           // 显示淘汰机制启用通知
           const toastManager = ToastManager.getInstance();
@@ -605,6 +670,28 @@ export const useGameState = () => {
             newState.gameStatus = winner?.isPlayer ? 'victory' : 'defeat';
             newState.winner = winner;
             newState.victoryReason = reason;
+            
+            // Record game end time and update statistics
+            if (!gameEndTime) {
+              const endTime = Date.now();
+              setGameEndTime(endTime);
+              
+              // Update statistics for the player
+              const playerCompany = newState.companies.find(c => c.isPlayer);
+              if (playerCompany) {
+                const gameResult = StatisticsManager.calculateGameResult(
+                  playerCompany,
+                  newState.companies,
+                  new Date(gameStartTime || Date.now()),
+                  new Date(endTime)
+                );
+                
+                // TODO: Get actual user ID when authentication is implemented
+                // For now, we'll just log the game result
+                console.log('Game result for statistics:', gameResult);
+                // StatisticsManager.updatePlayerStatistics(userId, gameResult);
+              }
+            }
           }
         }
 

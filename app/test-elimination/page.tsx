@@ -54,8 +54,8 @@ export default function TestEliminationPage() {
     }
   }, [gameState.companies]);
 
-  const timeSinceStart = Date.now() - gameStartTime;
-  const isInGracePeriod = timeSinceStart < ELIMINATION_GRACE_PERIOD;
+  const timeSinceStart = gameStartTime ? Date.now() - gameStartTime : 0;
+  const isInGracePeriod = gameStartTime ? timeSinceStart < ELIMINATION_GRACE_PERIOD : true;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -81,7 +81,7 @@ export default function TestEliminationPage() {
                 <h3 className="text-lg font-semibold mb-3 text-green-300">当前游戏状态</h3>
                 <div className="space-y-2 text-sm">
                   <div>🏁 游戏状态: {gameState.gameStatus}</div>
-                  <div>⏰ 游戏时间: {Math.floor(timeSinceStart / 1000)}秒</div>
+                  <div>⏰ 游戏时间: {gameStartTime ? Math.floor(timeSinceStart / 1000) : 0}秒</div>
                   <div>🛡️ 保护期: {isInGracePeriod ? '进行中' : '已结束'}</div>
                   <div>⚔️ 淘汰机制: {eliminationEnabled ? '已启用' : '未启用'}</div>
                   <div>🏢 活跃公司: {gameState.companies.filter(c => c.status === 'active').length}</div>
