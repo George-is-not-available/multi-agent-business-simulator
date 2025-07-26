@@ -24,6 +24,11 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string>('');
   const [chatMinimized, setChatMinimized] = useState(false);
+  const [isPrivateRoom, setIsPrivateRoom] = useState(false);
+  const [gamePassword, setGamePassword] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [readyPlayersCount, setReadyPlayersCount] = useState(0);
 
   useEffect(() => {
     // Set up socket callbacks
@@ -73,8 +78,11 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
 
   const handleCreateRoom = () => {
     if (roomName.trim()) {
-      socketClient.createRoom(roomName.trim(), maxPlayers);
+      const password = isPrivateRoom ? gamePassword.trim() : undefined;
+      socketClient.createRoom(roomName.trim(), maxPlayers, password);
       setRoomName('');
+      setGamePassword('');
+      setIsPrivateRoom(false);
     }
   };
 
@@ -99,150 +107,169 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
     }
   };
 
+  const handleUpdatePlayerName = () => {
+    if (playerName.trim()) {
+      socketClient.updatePlayerName(playerName.trim());
+    }
+  };
+
+  const handleToggleReady = () => {
+    socketClient.toggleReady();
+    setIsPlayerReady(!isPlayerReady);
+  };
+
   const isHost = currentRoom?.host === socketClient.getSocketId();
   const canStartGame = isHost && currentRoom && currentRoom.players.length >= 2;
+  
+  // Update ready players count when room changes
+  useEffect(() => {
+    if (currentRoom) {
+      setReadyPlayersCount(currentRoom.players.filter(p => p.isReady).length);
+    }
+  }, [currentRoom]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-            {t.multiplayer.gameTitle}
-          </h1>
-          <p className="text-xl text-blue-200">{t.multiplayer.multiplayerLobby}</p>
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-sm">{isConnected ? t.multiplayer.connected : t.multiplayer.connecting}</span>
+    <div className="flex-1 flex items-center justify-center">
+      <section className="py-20 text-center w-full">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-foreground tracking-tight sm:text-5xl md:text-6xl mb-2">
+              {t.multiplayer.gameTitle}
+              <span className="block text-primary">{t.multiplayer.multiplayerLobby}</span>
+            </h1>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-muted-foreground">{isConnected ? t.multiplayer.connected : t.multiplayer.connecting}</span>
+            </div>
           </div>
-        </div>
 
-        {/* Error display */}
-        {error && (
-          <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-6 text-center">
-            <p className="text-red-200">{error}</p>
-            <button 
-              onClick={() => setError('')}
-              className="mt-2 text-red-400 hover:text-red-300 text-sm"
-            >
-              {t.multiplayer.dismiss}
-            </button>
-          </div>
-        )}
+          {/* Error display */}
+          {error && (
+            <div className="bg-destructive/10 border border-destructive rounded-lg p-4 mb-6 text-center">
+              <p className="text-destructive">{error}</p>
+              <button 
+                onClick={() => setError('')}
+                className="mt-2 text-destructive hover:text-destructive/80 text-sm"
+              >
+                {t.multiplayer.dismiss}
+              </button>
+            </div>
+          )}
 
-        {!currentRoom ? (
-          // Room selection view
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Available Rooms */}
-            <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
-              <h2 className="text-2xl font-semibold mb-4 text-blue-300">{t.multiplayer.availableRooms}</h2>
-              
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {rooms.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">{t.multiplayer.noRoomsAvailable}</p>
-                ) : (
-                  rooms.map((room) => (
-                    <div 
-                      key={room.id} 
-                      className="bg-slate-700/50 rounded-lg p-4 border border-blue-400/20 hover:border-blue-400/40 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-blue-200">{room.name}</h3>
-                          <p className="text-sm text-gray-400">
-                            {room.players.length}/{room.maxPlayers} {t.multiplayer.players} • {room.spectators?.length || 0} spectators • {t.multiplayer.host}: {room.players.find(p => p.id === room.host)?.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span className="text-xs text-green-400">{room.players.filter(p => p.isReady).length} ready</span>
-                            </div>
-                            {room.isPrivate && (
+          {!currentRoom ? (
+            // Room selection view
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Available Rooms */}
+              <div className="lg:col-span-2 bg-card/50 backdrop-blur-sm rounded-xl p-6 border border-border">
+                <h2 className="text-2xl font-semibold mb-4 text-foreground">{t.multiplayer.availableRooms}</h2>
+                
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {rooms.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">{t.multiplayer.noRoomsAvailable}</p>
+                  ) : (
+                    rooms.map((room) => (
+                      <div 
+                        key={room.id} 
+                        className="bg-card/30 rounded-lg p-4 border border-border hover:border-primary/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-medium text-foreground">{room.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {room.players.length}/{room.maxPlayers} {t.multiplayer.players} • {room.spectators?.length || 0} spectators • {t.multiplayer.host}: {room.players.find(p => p.id === room.host)?.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
                               <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                <span className="text-xs text-yellow-400">Private</span>
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="text-xs text-green-400">{room.players.filter(p => p.isReady).length} ready</span>
                               </div>
-                            )}
+                              {room.isPrivate && (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                  <span className="text-xs text-yellow-400">Private</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              if (room.isPrivate) {
-                                const password = prompt('Enter room password:');
-                                if (password) handleJoinRoom(room.id, password);
-                              } else {
-                                handleJoinRoom(room.id);
-                              }
-                            }}
-                            disabled={room.players.length >= room.maxPlayers}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
-                          >
-                            {room.players.length >= room.maxPlayers ? t.multiplayer.full : t.multiplayer.join}
-                          </button>
-                          {room.settings?.allowSpectators && (
+                          <div className="flex gap-2">
                             <button
                               onClick={() => {
                                 if (room.isPrivate) {
                                   const password = prompt('Enter room password:');
-                                  if (password) handleSpectateRoom(room.id, password);
+                                  if (password) handleJoinRoom(room.id, password);
                                 } else {
-                                  handleSpectateRoom(room.id);
+                                  handleJoinRoom(room.id);
                                 }
                               }}
-                              disabled={room.spectators?.length >= (room.settings?.maxSpectators || 0)}
-                              className="px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
+                              disabled={room.players.length >= room.maxPlayers}
+                              className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed rounded-lg transition-colors text-sm text-primary-foreground"
                             >
-                              👁️ {room.spectators?.length >= (room.settings?.maxSpectators || 0) ? 'Full' : 'Watch'}
+                              {room.players.length >= room.maxPlayers ? t.multiplayer.full : t.multiplayer.join}
                             </button>
-                          )}
+                            {room.settings?.allowSpectators && (
+                              <button
+                                onClick={() => {
+                                  if (room.isPrivate) {
+                                    const password = prompt('Enter room password:');
+                                    if (password) handleSpectateRoom(room.id, password);
+                                  } else {
+                                    handleSpectateRoom(room.id);
+                                  }
+                                }}
+                                disabled={room.spectators?.length >= (room.settings?.maxSpectators || 0)}
+                                className="px-3 py-2 bg-secondary hover:bg-secondary/80 disabled:bg-muted disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
+                              >
+                                👁️ {room.spectators?.length >= (room.settings?.maxSpectators || 0) ? 'Full' : 'Watch'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 )}
               </div>
 
-              <button
-                onClick={() => socketClient.listRooms()}
-                className="w-full mt-4 py-2 px-4 bg-slate-600 hover:bg-slate-700 rounded-lg transition-colors text-sm"
-              >
-                {t.multiplayer.refresh}
-              </button>
-            </div>
-
-            {/* Create Room */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
-              <h2 className="text-2xl font-semibold mb-4 text-blue-300">{t.multiplayer.createRoom}</h2>
-              
-              {!showCreateRoom ? (
                 <button
-                  onClick={() => setShowCreateRoom(true)}
-                  className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg transition-all transform hover:scale-105 font-semibold"
+                  onClick={() => socketClient.listRooms()}
+                  className="w-full mt-4 py-2 px-4 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors text-sm"
                 >
-                  {t.multiplayer.createNewRoom}
+                  {t.multiplayer.refresh}
                 </button>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-blue-200 mb-2">{t.multiplayer.roomName}</label>
-                    <input
-                      type="text"
-                      value={roomName}
-                      onChange={(e) => setRoomName(e.target.value)}
-                      className="w-full p-3 bg-slate-700 border border-blue-400/30 rounded-lg focus:outline-none focus:border-blue-400 text-white"
-                      placeholder={t.multiplayer.enterRoomName}
-                      maxLength={50}
-                    />
-                  </div>
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-blue-200 mb-2">{t.multiplayer.maxPlayers}</label>
-                    <select
-                      value={maxPlayers}
-                      onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                      className="w-full p-3 bg-slate-700 border border-blue-400/30 rounded-lg focus:outline-none focus:border-blue-400 text-white"
-                    >
+              {/* Create Room */}
+              <div className="bg-card/50 backdrop-blur-sm rounded-xl p-6 border border-border">
+                <h2 className="text-2xl font-semibold mb-4 text-foreground">{t.multiplayer.createRoom}</h2>
+              
+                {!showCreateRoom ? (
+                  <button
+                    onClick={() => setShowCreateRoom(true)}
+                    className="w-full py-3 px-6 bg-primary hover:bg-primary/90 rounded-lg transition-all transform hover:scale-105 font-semibold text-primary-foreground"
+                  >
+                    {t.multiplayer.createNewRoom}
+                  </button>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">{t.multiplayer.roomName}</label>
+                      <input
+                        type="text"
+                        value={roomName}
+                        onChange={(e) => setRoomName(e.target.value)}
+                        className="w-full p-3 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-foreground"
+                        placeholder={t.multiplayer.enterRoomName}
+                        maxLength={50}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">{t.multiplayer.maxPlayers}</label>
+                      <select
+                        value={maxPlayers}
+                        onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                        className="w-full p-3 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-foreground"
+                      >
                       <option value={2}>2 {t.multiplayer.players}</option>
                       <option value={3}>3 {t.multiplayer.players}</option>
                       <option value={4}>4 {t.multiplayer.players}</option>
@@ -251,46 +278,46 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="private-room"
-                      checked={isPrivateRoom}
-                      onChange={(e) => setIsPrivateRoom(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 bg-slate-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                    <label htmlFor="private-room" className="text-sm font-medium text-blue-200">Private Room</label>
-                  </div>
-                  
-                  {isPrivateRoom && (
-                    <div>
-                      <label className="block text-sm font-medium text-blue-200 mb-2">Password</label>
+                    <div className="flex items-center gap-2">
                       <input
-                        type="password"
-                        value={gamePassword}
-                        onChange={(e) => setGamePassword(e.target.value)}
-                        className="w-full p-3 bg-slate-700 border border-blue-400/30 rounded-lg focus:outline-none focus:border-blue-400 text-white"
-                        placeholder="Enter room password"
-                        maxLength={20}
+                        type="checkbox"
+                        id="private-room"
+                        checked={isPrivateRoom}
+                        onChange={(e) => setIsPrivateRoom(e.target.checked)}
+                        className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
                       />
+                      <label htmlFor="private-room" className="text-sm font-medium text-foreground">Private Room</label>
                     </div>
-                  )}
+                    
+                    {isPrivateRoom && (
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Password</label>
+                        <input
+                          type="password"
+                          value={gamePassword}
+                          onChange={(e) => setGamePassword(e.target.value)}
+                          className="w-full p-3 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-foreground"
+                          placeholder="Enter room password"
+                          maxLength={20}
+                        />
+                      </div>
+                    )}
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleCreateRoom}
-                      disabled={!roomName.trim() || (isPrivateRoom && !gamePassword.trim())}
-                      className="flex-1 py-3 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-lg transition-all font-semibold"
-                    >
-                      {t.multiplayer.create}
-                    </button>
-                    <button
-                      onClick={() => setShowCreateRoom(false)}
-                      className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                      {t.common.cancel}
-                    </button>
-                  </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleCreateRoom}
+                        disabled={!roomName.trim() || (isPrivateRoom && !gamePassword.trim())}
+                        className="flex-1 py-3 px-6 bg-green-600 hover:bg-green-700 disabled:bg-muted disabled:cursor-not-allowed rounded-lg transition-all font-semibold text-white"
+                      >
+                        {t.multiplayer.create}
+                      </button>
+                      <button
+                        onClick={() => setShowCreateRoom(false)}
+                        className="flex-1 py-3 px-6 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                 </div>
               )}
             </div>
@@ -300,109 +327,109 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
               <MiniLeaderboard />
             </div>
           </div>
-        ) : (
-          // Room view
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30 max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-blue-300">{currentRoom.name}</h2>
-              <button
-                onClick={handleLeaveRoom}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                {t.multiplayer.leaveRoom}
-              </button>
-            </div>
+          ) : (
+            // Room view
+            <div className="bg-card/50 backdrop-blur-sm rounded-xl p-6 border border-border max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold text-foreground">{currentRoom.name}</h2>
+                <button
+                  onClick={handleLeaveRoom}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-white"
+                >
+                  {t.multiplayer.leaveRoom}
+                </button>
+              </div>
 
-            {/* Players list */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-blue-200 mb-3">{t.multiplayer.players} ({currentRoom.players.length}/{currentRoom.maxPlayers})</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {currentRoom.players.map((player) => (
-                  <div
-                    key={player.id}
-                    className={`bg-slate-700/50 rounded-lg p-3 border ${
-                      player.id === currentRoom.host 
-                        ? 'border-yellow-400/50 bg-yellow-400/10' 
-                        : 'border-blue-400/20'
+              {/* Players list */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-foreground mb-3">{t.multiplayer.players} ({currentRoom.players.length}/{currentRoom.maxPlayers})</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {currentRoom.players.map((player) => (
+                    <div
+                      key={player.id}
+                      className={`bg-card/30 rounded-lg p-3 border ${
+                        player.id === currentRoom.host 
+                          ? 'border-yellow-400/50 bg-yellow-400/10' 
+                          : 'border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground">{player.name}</span>
+                        {player.id === currentRoom.host && (
+                          <span className="text-yellow-400 text-xs font-medium">{t.multiplayer.host}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${player.isOnline ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+                        <span className="text-muted-foreground text-xs">{player.isOnline ? t.multiplayer.online : t.multiplayer.offline}</span>
+                        <div className={`w-2 h-2 rounded-full ml-2 ${player.isReady ? 'bg-blue-500' : 'bg-gray-500'}`} title={player.isReady ? 'Ready' : 'Not Ready'}></div>
+                        <span className="text-muted-foreground text-xs">{player.isReady ? 'Ready' : 'Not Ready'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Player Settings */}
+              <div className="bg-card/30 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-medium text-foreground mb-3">Player Settings</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={playerName}
+                      onChange={(e) => setPlayerName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      maxLength={20}
+                    />
+                  </div>
+                  <button
+                    onClick={handleUpdatePlayerName}
+                    disabled={!playerName.trim()}
+                    className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed rounded-lg transition-colors text-sm text-primary-foreground"
+                  >
+                    Update Name
+                  </button>
+                  <button
+                    onClick={handleToggleReady}
+                    className={`px-4 py-2 rounded-lg transition-colors text-sm ${
+                      isPlayerReady 
+                        ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        : 'bg-secondary hover:bg-secondary/80'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-white">{player.name}</span>
-                      {player.id === currentRoom.host && (
-                        <span className="text-yellow-400 text-xs font-medium">{t.multiplayer.host}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className={`w-2 h-2 rounded-full ${player.isOnline ? 'bg-green-400' : 'bg-gray-400'}`}></div>
-                      <span className="text-gray-400 text-xs">{player.isOnline ? t.multiplayer.online : t.multiplayer.offline}</span>
-                      <div className={`w-2 h-2 rounded-full ml-2 ${player.isReady ? 'bg-blue-500' : 'bg-gray-500'}`} title={player.isReady ? 'Ready' : 'Not Ready'}></div>
-                      <span className="text-gray-400 text-xs">{player.isReady ? 'Ready' : 'Not Ready'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Player Settings */}
-            <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-medium text-blue-300 mb-3">Player Settings</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full px-3 py-2 bg-slate-700 border border-blue-400/30 rounded-lg text-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                    maxLength={20}
-                  />
-                </div>
-                <button
-                  onClick={handleUpdatePlayerName}
-                  disabled={!playerName.trim()}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-sm"
-                >
-                  Update Name
-                </button>
-                <button
-                  onClick={handleToggleReady}
-                  className={`px-4 py-2 rounded-lg transition-colors text-sm ${
-                    isPlayerReady 
-                      ? 'bg-green-600 hover:bg-green-700' 
-                      : 'bg-gray-600 hover:bg-gray-700'
-                  }`}
-                >
-                  {isPlayerReady ? '✓ Ready' : 'Not Ready'}
-                </button>
-              </div>
-            </div>
-
-            {/* Game controls */}
-            <div className="flex justify-center">
-              {isHost ? (
-                <div className="text-center">
-                  <button
-                    onClick={handleStartGame}
-                    disabled={!canStartGame}
-                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-lg transition-all transform hover:scale-105 font-semibold text-lg"
-                  >
-                    {canStartGame ? t.multiplayer.startGame : `Waiting for players (${readyPlayersCount}/${currentRoom.players.length} ready)`}
+                    {isPlayerReady ? '✓ Ready' : 'Not Ready'}
                   </button>
-                  {currentRoom.players.length >= 2 && readyPlayersCount < currentRoom.players.length && (
-                    <p className="text-yellow-300 text-sm mt-2">
-                      ⚠️ All players must be ready to start
-                    </p>
-                  )}
                 </div>
-              ) : (
-                <p className="text-gray-400 text-center">{t.multiplayer.waitingForHost}</p>
-              )}
-            </div>
+              </div>
 
-            {/* Game info */}
-            <div className="mt-6 text-center text-sm text-gray-400">
-              <p>{t.multiplayer.gameWillStart}</p>
-            </div>
+              {/* Game controls */}
+              <div className="flex justify-center">
+                {isHost ? (
+                  <div className="text-center">
+                    <button
+                      onClick={handleStartGame}
+                      disabled={!canStartGame}
+                      className="px-8 py-4 bg-green-600 hover:bg-green-700 disabled:bg-muted disabled:cursor-not-allowed rounded-lg transition-all transform hover:scale-105 font-semibold text-lg text-white"
+                    >
+                      {canStartGame ? t.multiplayer.startGame : `Waiting for players (${readyPlayersCount}/${currentRoom.players.length} ready)`}
+                    </button>
+                    {currentRoom.players.length >= 2 && readyPlayersCount < currentRoom.players.length && (
+                      <p className="text-yellow-500 text-sm mt-2">
+                        ⚠️ All players must be ready to start
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center">{t.multiplayer.waitingForHost}</p>
+                )}
+              </div>
+
+              {/* Game info */}
+              <div className="mt-6 text-center text-sm text-muted-foreground">
+                <p>{t.multiplayer.gameWillStart}</p>
+              </div>
           </div>
         )}
         

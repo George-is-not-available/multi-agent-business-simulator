@@ -35,8 +35,8 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
   return (
     <Card className={`${className} relative transition-all duration-200 ${
       unlocked 
-        ? 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 hover:border-blue-300' 
-        : 'bg-gray-100 border-gray-200 opacity-60 grayscale hover:opacity-80 hover:grayscale-0'
+        ? 'bg-gradient-to-br from-slate-800/90 to-slate-900/90 border-blue-500/50 hover:border-blue-400/70' 
+        : 'bg-slate-800/60 border-slate-600/40 opacity-60 grayscale hover:opacity-80 hover:grayscale-0'
     }`}>
       <CardContent className="p-3">
         <div className="flex items-center gap-2 mb-2">
@@ -48,7 +48,7 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-1">
               <h4 className={`font-semibold text-sm truncate transition-all duration-200 ${
-                unlocked ? 'text-foreground' : 'text-muted-foreground'
+                unlocked ? 'text-white' : 'text-gray-400'
               }`}>
                 {achievement.name}
               </h4>
@@ -89,7 +89,7 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
         </div>
         
         <p className={`text-xs mb-2 transition-all duration-200 ${
-          unlocked ? 'text-muted-foreground' : 'text-muted-foreground/70'
+          unlocked ? 'text-gray-300' : 'text-gray-500'
         }`}>
           {achievement.description}
         </p>
@@ -97,10 +97,10 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Star className={`h-3 w-3 transition-all duration-200 ${
-              unlocked ? 'text-yellow-600' : 'text-muted-foreground opacity-50'
+              unlocked ? 'text-yellow-400' : 'text-gray-500 opacity-50'
             }`} />
             <span className={`text-xs transition-all duration-200 ${
-              unlocked ? 'text-yellow-600' : 'text-muted-foreground'
+              unlocked ? 'text-yellow-400' : 'text-gray-500'
             }`}>
               {achievement.reward.points}
             </span>
@@ -108,8 +108,8 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
           {achievement.reward.title && (
             <Badge className={`text-xs transition-all duration-200 ${
               unlocked 
-                ? 'bg-purple-100 text-purple-700 border-purple-200' 
-                : 'bg-gray-100 text-muted-foreground border-gray-200 opacity-50'
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
+                : 'bg-gray-600/20 text-gray-500 border-gray-600/30 opacity-50'
             }`}>
               {achievement.reward.title}
             </Badge>
@@ -118,9 +118,9 @@ export function AchievementBadge({ achievement, unlocked = false, className = ''
         
         {/* 未完成成就的锁定指示器 */}
         {!unlocked && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-            <div className="bg-muted/80 rounded-full p-2">
-              <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg">
+            <div className="bg-slate-700/80 rounded-full p-2">
+              <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
