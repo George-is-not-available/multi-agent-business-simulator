@@ -13,10 +13,16 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [canSkip, setCanSkip] = useState(false);
   const { t } = useLanguage();
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // 1秒后允许跳过
+    const skipTimer = setTimeout(() => {
+      setCanSkip(true);
+    }, 1000);
     
     // 2秒后开始淡化
     const fadeTimer = setTimeout(() => {
@@ -30,17 +36,31 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
     }, 2500);
 
     return () => {
+      clearTimeout(skipTimer);
       clearTimeout(fadeTimer);
       clearTimeout(completeTimer);
     };
   }, [onComplete]);
+
+  const handleSkip = () => {
+    if (canSkip) {
+      setFadeOut(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        onComplete();
+      }, 300);
+    }
+  };
 
   if (!isVisible) {
     return null;
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'} ${canSkip ? 'cursor-pointer' : ''}`}
+      onClick={handleSkip}
+    >
       {/* 背景DNA动画效果 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-black to-blue-800/20"></div>
@@ -198,6 +218,11 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
           <p className="text-xs text-blue-400/60 animate-pulse">
             {t.startup.initializing}
           </p>
+          {canSkip && (
+            <p className="text-xs text-cyan-400/80 mt-2 animate-pulse">
+              点击任意位置跳过
+            </p>
+          )}
         </div>
       </div>
 

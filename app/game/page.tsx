@@ -18,6 +18,7 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function GamePage() {
   const [showStartup, setShowStartup] = useState(true);
+  const [startupTimeout, setStartupTimeout] = useState<NodeJS.Timeout | null>(null);
   const { t } = useLanguage();
   
   // Check if startup screen was already shown in this session
@@ -25,6 +26,19 @@ export default function GamePage() {
     const startupShown = sessionStorage.getItem('startupScreenShown');
     if (startupShown) {
       setShowStartup(false);
+    } else {
+      // Emergency timeout - if startup screen doesn't complete in 10 seconds, force skip
+      const emergencyTimeout = setTimeout(() => {
+        console.warn('Emergency timeout: Forcing startup screen to complete');
+        setShowStartup(false);
+        sessionStorage.setItem('startupScreenShown', 'true');
+      }, 10000);
+      setStartupTimeout(emergencyTimeout);
+      
+      // Cleanup on unmount
+      return () => {
+        clearTimeout(emergencyTimeout);
+      };
     }
   }, []);
   
@@ -50,16 +64,32 @@ export default function GamePage() {
   
   // 处理启动屏幕完成
   const handleStartupComplete = () => {
+    console.log('Startup screen completed successfully');
+    if (startupTimeout) {
+      clearTimeout(startupTimeout);
+      setStartupTimeout(null);
+    }
     setShowStartup(false);
     // Mark startup screen as shown in this session
     sessionStorage.setItem('startupScreenShown', 'true');
   };
   
-  // Debug function to reset startup screen (call from browser console)
+  // Debug functions (call from browser console)
   if (typeof window !== 'undefined') {
     (window as any).resetStartupScreen = () => {
       sessionStorage.removeItem('startupScreenShown');
       setShowStartup(true);
+    };
+    (window as any).skipStartupScreen = () => {
+      console.log('Manually skipping startup screen');
+      handleStartupComplete();
+    };
+    (window as any).checkStartupStatus = () => {
+      console.log('Startup screen status:', { 
+        showStartup, 
+        sessionStorage: sessionStorage.getItem('startupScreenShown'),
+        hasTimeout: !!startupTimeout
+      });
     };
   }
   
