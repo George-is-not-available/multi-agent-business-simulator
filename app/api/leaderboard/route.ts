@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { gameStatistics, users } from '@/lib/db/schema';
+import { gameStatistics, users, playerAchievements, unlockedAchievements } from '@/lib/db/schema';
 import { desc, eq, sql } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Validate sortBy parameter
-    const validSortFields = ['gamesWon', 'gamesPlayed', 'averageRank', 'totalPlayTime', 'highestAssets'];
+    const validSortFields = ['gamesWon', 'gamesPlayed', 'averageRank', 'totalPlayTime', 'highestAssets', 'achievementPoints', 'achievementCount'];
     if (!validSortFields.includes(sortBy)) {
       return NextResponse.json(
         { error: 'Invalid sortBy parameter' },
@@ -37,6 +37,12 @@ export async function GET(request: NextRequest) {
       case 'highestAssets':
         orderBy = desc(gameStatistics.highestAssets);
         break;
+      case 'achievementPoints':
+        orderBy = desc(playerAchievements.totalPoints);
+        break;
+      case 'achievementCount':
+        orderBy = desc(playerAchievements.unlockedCount);
+        break;
       default:
         orderBy = desc(gameStatistics.gamesWon);
     }
@@ -54,9 +60,15 @@ export async function GET(request: NextRequest) {
         highestAssets: gameStatistics.highestAssets,
         lastPlayed: gameStatistics.lastPlayed,
         winRate: sql<number>`CASE WHEN ${gameStatistics.gamesPlayed} > 0 THEN ROUND((${gameStatistics.gamesWon}::decimal / ${gameStatistics.gamesPlayed}::decimal * 100), 2) ELSE 0 END`,
+        // Achievement data
+        achievementPoints: playerAchievements.totalPoints,
+        achievementCount: playerAchievements.unlockedCount,
+        badges: playerAchievements.badges,
+        titles: playerAchievements.titles,
       })
       .from(gameStatistics)
       .innerJoin(users, eq(gameStatistics.userId, users.id))
+      .leftJoin(playerAchievements, eq(gameStatistics.userId, playerAchievements.userId))
       .where(sql`${gameStatistics.gamesPlayed} > 0`) // Only include players who have played at least one game
       .orderBy(orderBy)
       .limit(limit)

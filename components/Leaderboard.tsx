@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Medal, Award, TrendingUp, Clock, DollarSign, Target, Users, RefreshCw, Filter } from 'lucide-react';
+import { Trophy, Medal, Award, TrendingUp, Clock, DollarSign, Target, Users, RefreshCw, Filter, Star, Crown, Zap } from 'lucide-react';
 
 interface LeaderboardEntry {
   userId: number;
@@ -18,6 +18,12 @@ interface LeaderboardEntry {
   highestAssets: number;
   lastPlayed: string;
   winRate: number;
+  // 成就相关
+  achievementPoints?: number;
+  achievementCount?: number;
+  badges?: string[];
+  titles?: string[];
+  recentAchievements?: any[];
 }
 
 interface LeaderboardProps {
@@ -137,6 +143,8 @@ export default function Leaderboard({ className = '' }: LeaderboardProps) {
     { value: 'averageRank', label: '平均排名', icon: Target },
     { value: 'totalPlayTime', label: '游戏时长', icon: Clock },
     { value: 'highestAssets', label: '最高资产', icon: DollarSign },
+    { value: 'achievementPoints', label: '成就点数', icon: Star },
+    { value: 'achievementCount', label: '成就数量', icon: Award },
   ];
 
   if (loading) {
@@ -242,14 +250,55 @@ export default function Leaderboard({ className = '' }: LeaderboardProps) {
                     <Badge className={getRankBadgeColor(player.rank)}>
                       #{player.rank}
                     </Badge>
+                    {/* 显示玩家称号 */}
+                    {player.titles && player.titles.length > 0 && (
+                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                        <Crown className="h-3 w-3 mr-1" />
+                        {player.titles[0]}
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-400 truncate">
-                    {player.email}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm text-gray-400 truncate">
+                      {player.email}
+                    </p>
+                    {/* 显示徽章 */}
+                    {player.badges && player.badges.length > 0 && (
+                      <div className="flex gap-1">
+                        {player.badges.slice(0, 3).map((badge, index) => (
+                          <Badge key={index} className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
+                            {badge}
+                          </Badge>
+                        ))}
+                        {player.badges.length > 3 && (
+                          <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">
+                            +{player.badges.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* 成就点数和数量 */}
+                  {(player.achievementPoints || player.achievementCount) && (
+                    <div className="flex items-center gap-3 text-xs">
+                      {player.achievementPoints && (
+                        <div className="flex items-center gap-1 text-yellow-400">
+                          <Star className="h-3 w-3" />
+                          {player.achievementPoints}点
+                        </div>
+                      )}
+                      {player.achievementCount && (
+                        <div className="flex items-center gap-1 text-blue-400">
+                          <Award className="h-3 w-3" />
+                          {player.achievementCount}个成就
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Statistics */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-sm">
                   <div className="text-center">
                     <div className="text-green-400 font-semibold">{player.gamesWon}</div>
                     <div className="text-xs text-gray-400">胜利</div>
@@ -265,6 +314,13 @@ export default function Leaderboard({ className = '' }: LeaderboardProps) {
                   <div className="text-center">
                     <div className="text-yellow-400 font-semibold">{formatAssets(player.highestAssets)}</div>
                     <div className="text-xs text-gray-400">最高资产</div>
+                  </div>
+                  {/* 成就统计 */}
+                  <div className="text-center">
+                    <div className="text-orange-400 font-semibold">
+                      {player.achievementCount || 0}
+                    </div>
+                    <div className="text-xs text-gray-400">成就</div>
                   </div>
                 </div>
 

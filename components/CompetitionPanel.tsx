@@ -124,7 +124,7 @@ export const CompetitionPanel: React.FC<CompetitionPanelProps> = ({
           竞争态势
         </CardTitle>
         <CardDescription className="text-gray-400">
-          实时竞争分析与企业对抗
+          实时竞争分析与企业对抗 • 一旦购买整家企业即可消灭竞争对手
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -137,6 +137,46 @@ export const CompetitionPanel: React.FC<CompetitionPanelProps> = ({
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
+            {/* Elimination Prediction Alert */}
+            {(() => {
+              const activeCompanies = gameState.companies.filter(c => c.status === 'active');
+              const vulnerableCompanies = activeCompanies.filter(c => 
+                !c.isPlayer && 
+                playerCompany && 
+                playerCompany.assets >= c.assets * 1.2
+              );
+              
+              if (vulnerableCompanies.length > 0) {
+                return (
+                  <div className="bg-gradient-to-r from-red-900/50 to-rose-900/50 p-4 rounded-lg border border-red-400/30 mb-4">
+                    <div className="flex items-center gap-2 text-red-200 font-semibold mb-2">
+                      <Target className="w-5 h-5" />
+                      🎯 收购机会！
+                    </div>
+                    <div className="text-red-100 text-sm">
+                      你现在有足够资金收购 {vulnerableCompanies.length} 家企业，立即消灭竞争对手！
+                    </div>
+                  </div>
+                );
+              }
+              
+              if (activeCompanies.length === 2) {
+                return (
+                  <div className="bg-gradient-to-r from-yellow-900/50 to-amber-900/50 p-4 rounded-lg border border-yellow-400/30 mb-4">
+                    <div className="flex items-center gap-2 text-yellow-200 font-semibold mb-2">
+                      <Trophy className="w-5 h-5" />
+                      🏆 决战时刻！
+                    </div>
+                    <div className="text-yellow-100 text-sm">
+                      只剩最后一个竞争对手，收购即可获得胜利！
+                    </div>
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
+            
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gray-700 p-3 rounded">
                 <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -154,25 +194,24 @@ export const CompetitionPanel: React.FC<CompetitionPanelProps> = ({
               
               <div className="bg-gray-700 p-3 rounded">
                 <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <TrendingUp className="w-4 h-4" />
-                  风险水平
+                  <Users className="w-4 h-4" />
+                  存活企业
                 </div>
                 <div className="text-lg font-bold text-white">
-                  {Math.round(analytics.riskLevel)}%
+                  {gameState.companies.filter(c => c.status === 'active').length}
                 </div>
-                <Progress 
-                  value={analytics.riskLevel} 
-                  className="h-2 mt-1"
-                />
+                <div className="text-xs text-gray-400 mt-1">
+                  {gameState.companies.filter(c => c.status === 'bankrupt').length} 已出局
+                </div>
               </div>
               
               <div className="bg-gray-700 p-3 rounded">
                 <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <Zap className="w-4 h-4" />
-                  总交易数
+                  <TrendingUp className="w-4 h-4" />
+                  资产增长
                 </div>
                 <div className="text-lg font-bold text-white">
-                  {analytics.totalTransactions}
+                  {formatCurrency(analytics.averageAssetGrowth)}
                 </div>
               </div>
             </div>
@@ -230,16 +269,41 @@ export const CompetitionPanel: React.FC<CompetitionPanelProps> = ({
                 </div>
 
                 {!company.isPlayer && company.status === 'active' && playerCompany && (
-                  <Button
-                    onClick={() => onHostileTakeover(company.id)}
-                    size="sm"
-                    variant="outline"
-                    className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white border-red-400/30 shadow-lg shadow-red-500/30 transition-all duration-300"
-                    disabled={playerCompany.assets < company.assets * 1.5}
-                  >
-                    <Target className="w-4 h-4 mr-2" />
-                    ⚡ Hostile Takeover (Cost: {formatCurrency(Math.floor(company.assets * 1.5))})
-                  </Button>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-violet-400/70">收购成本 (120%):</span>
+                      <span className="text-violet-200 font-medium">{formatCurrency(Math.floor(company.assets * 1.2))}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-violet-400/70">收购后资产:</span>
+                      <span className="text-violet-200 font-medium">{formatCurrency(playerCompany.assets - Math.floor(company.assets * 1.2))}</span>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        if (window.confirm(`确定要收购 ${company.name} 吗？\n\n收购成本: ${formatCurrency(Math.floor(company.assets * 1.2))}\n收购后，该企业将被完全消灭并出局！`)) {
+                          onHostileTakeover(company.id);
+                        }
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white border-red-400/30 shadow-lg shadow-red-500/30 transition-all duration-300"
+                      disabled={playerCompany.assets < company.assets * 1.2}
+                    >
+                      <Target className="w-4 h-4 mr-2" />
+                      {playerCompany.assets >= company.assets * 1.2 ? '💀 立即消灭企业' : '⚡ 资金不足'}
+                    </Button>
+                  </div>
+                )}
+                {company.status === 'bankrupt' && (
+                  <div className="bg-gradient-to-r from-red-900/50 to-rose-900/50 p-3 rounded-lg border border-red-400/30">
+                    <div className="flex items-center gap-2 text-red-200 font-semibold">
+                      <AlertTriangle className="w-4 h-4" />
+                      💀 企业已出局
+                    </div>
+                    <div className="text-red-100/70 text-sm mt-1">
+                      该企业已被收购，所有资产已转移
+                    </div>
+                  </div>
                 )}
               </div>
             ))}

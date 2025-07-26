@@ -84,7 +84,7 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
   const previousGameState = useRef<GameState | null>(null);
   const aiDecisionEngine = useRef(getAIDecisionEngine());
   // 使用游戏模式配置或默认值
-  const initialAiDecisionDelay = gameModeConfig ? gameModeConfig.aiDecisionDelay / 100 : 50;
+  const initialAiDecisionDelay = gameModeConfig ? gameModeConfig.aiDecisionDelay / 100 : 100; // 增加AI决策延迟，让玩家有更多时间
   const gracePeriod = gameModeConfig ? gameModeConfig.gracePeriod * 1000 : 10 * 60 * 1000;
   const startingAssets = gameModeConfig ? gameModeConfig.startingAssets : 1000000;
   const aiCount = gameModeConfig ? gameModeConfig.aiCount : 2;
@@ -196,8 +196,8 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
           if (!company.isPlayer) {
             return {
               ...company,
-              assets: Math.floor(startingAssets * (0.8 + Math.random() * 0.4)), // 80%-120% 玩家资产
-              employees: 8 + Math.floor(Math.random() * 8), // 8-16 员工
+              assets: Math.floor(startingAssets * (0.7 + Math.random() * 0.3)), // 70%-100% 玩家资产 - 降低AI初始资产
+              employees: 6 + Math.floor(Math.random() * 6), // 6-12 员工 - 降低AI初始员工
               type: Math.random() > 0.5 ? 'centralized' as const : 'decentralized' as const,
             };
           }
@@ -210,9 +210,9 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
             return {
               ...agent,
               skills: {
-                negotiation: 50 + Math.floor(Math.random() * 40),
-                espionage: 40 + Math.floor(Math.random() * 50),
-                management: 60 + Math.floor(Math.random() * 30)
+                negotiation: 40 + Math.floor(Math.random() * 30), // 降低AI谈判能力
+                espionage: 30 + Math.floor(Math.random() * 40), // 降低AI间谍能力
+                management: 50 + Math.floor(Math.random() * 25) // 降低AI管理能力
               }
             };
           }
@@ -555,9 +555,9 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
 
         // AI竞争行为（使用真实AI决策）
         if (aiDecisionCooldown <= 0) {
-          // 每10秒执行一次AI决策
+          // 每15秒执行一次AI决策 - 降低AI决策频率
           console.log('🔄 AI Decision Cooldown Complete - Starting AI Actions');
-          setAiDecisionCooldown(100); // 10秒冷却时间
+          setAiDecisionCooldown(150); // 15秒冷却时间 - 给玩家更多时间
           
           // 为每个非玩家公司执行决策
           const aiCompanies = newState.companies.filter(c => !c.isPlayer && c.status === 'active');
@@ -591,12 +591,12 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
                 setGameState(currentState => {
                   return executeAIDecision(currentState, company.id, decision);
                 });
-              }, Math.random() * 2000 + 1000); // 1-3秒后执行
+              }, Math.random() * 4000 + 2000); // 2-6秒后执行 - 给玩家更多反应时间
               
             } catch (error) {
               console.error(`❌ AI decision error for company ${company.name}:`, error);
               // 使用简单的备用逻辑
-              if (Math.random() < 0.05) {
+              if (Math.random() < 0.01) { // 进一步降低AI备用行动概率至1%
                 const availableBuildings = newState.buildings.filter(b => !b.owner && company.assets >= b.level * 100000);
                 if (availableBuildings.length > 0) {
                   const targetBuilding = availableBuildings[Math.floor(Math.random() * availableBuildings.length)];
@@ -662,36 +662,52 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
         competitionEngine.current.addEvents(events);
         newState = updatedState;
 
-        // 检查胜利条件 - 只有在淘汰机制启用后才检查胜利条件
-        if (eliminationEnabled) {
-          const { isGameOver, winner, reason } = competitionEngine.current.checkVictoryConditions(newState);
+        // 检查胜利条件 - 修复：胜利条件检查不受淘汰机制宽限期限制
+        const { isGameOver, winner, reason, victoryType } = competitionEngine.current.checkVictoryConditions(newState);
+        
+        if (isGameOver) {
+          newState.gameStatus = winner?.isPlayer ? 'victory' : 'defeat';
+          newState.winner = winner;
+          newState.victoryReason = reason;
           
-          if (isGameOver) {
-            newState.gameStatus = winner?.isPlayer ? 'victory' : 'defeat';
-            newState.winner = winner;
-            newState.victoryReason = reason;
+          // 触发游戏结束处理
+          competitionEngine.current.triggerGameEnd(newState, winner, reason);
+          
+          // 显示胜利通知
+          const toastManager = ToastManager.getInstance();
+          if (winner?.isPlayer) {
+            toastManager.success('🏆 胜利！', reason, 8000);
+          } else {
+            toastManager.error('😔 失败', reason, 8000);
+          }
+          
+          // Record game end time and update statistics
+          if (!gameEndTime) {
+            const endTime = Date.now();
+            setGameEndTime(endTime);
             
-            // Record game end time and update statistics
-            if (!gameEndTime) {
-              const endTime = Date.now();
-              setGameEndTime(endTime);
+            // Update statistics for the player
+            const playerCompany = newState.companies.find(c => c.isPlayer);
+            if (playerCompany) {
+              const gameResult = StatisticsManager.calculateGameResult(
+                playerCompany,
+                newState.companies,
+                new Date(gameStartTime || Date.now()),
+                new Date(endTime)
+              );
               
-              // Update statistics for the player
-              const playerCompany = newState.companies.find(c => c.isPlayer);
-              if (playerCompany) {
-                const gameResult = StatisticsManager.calculateGameResult(
-                  playerCompany,
-                  newState.companies,
-                  new Date(gameStartTime || Date.now()),
-                  new Date(endTime)
-                );
-                
-                // TODO: Get actual user ID when authentication is implemented
-                // For now, we'll just log the game result
-                console.log('Game result for statistics:', gameResult);
-                // StatisticsManager.updatePlayerStatistics(userId, gameResult);
-              }
+              // TODO: Get actual user ID when authentication is implemented
+              // For now, we'll just log the game result
+              console.log('Game result for statistics:', gameResult);
+              // StatisticsManager.updatePlayerStatistics(userId, gameResult);
             }
+          }
+        } else if (eliminationEnabled) {
+          // 只有在淘汰机制启用后才检查接近胜利条件的警告
+          const { isNearVictory, warningMessage } = competitionEngine.current.checkNearVictoryConditions(newState);
+          if (isNearVictory && Math.random() < 0.1) { // 10%概率显示警告
+            const toastManager = ToastManager.getInstance();
+            toastManager.warning('⚠️ 胜利警告', warningMessage, 5000);
           }
         }
 
@@ -729,6 +745,25 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
     
     if (success) {
       setGameState(updatedState);
+      
+      // 检查是否在收购后立即达到胜利条件 - 修复：移除淘汰机制限制
+      const { isGameOver, winner, reason } = competitionEngine.current.checkVictoryConditions(updatedState);
+      if (isGameOver) {
+        // 更新游戏状态
+        setGameState(prev => ({
+          ...updatedState,
+          gameStatus: winner?.isPlayer ? 'victory' : 'defeat',
+          winner,
+          victoryReason: reason
+        }));
+        
+        const toastManager = ToastManager.getInstance();
+        if (winner?.isPlayer) {
+          toastManager.success('🏆 立即胜利！', reason, 10000);
+        } else {
+          toastManager.error('😱 游戏结束', reason, 8000);
+        }
+      }
     }
     
     return { success, cost, message: event.description };
@@ -767,7 +802,8 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
         break;
 
       case 'recruit_employee':
-        if (company.assets >= decision.cost) {
+        // 降低AI招聘效率
+        if (company.assets >= decision.cost && Math.random() < 0.7) { // 70%成功率
           newState.companies = newState.companies.map(c => 
             c.id === companyId 
               ? {
@@ -820,6 +856,7 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
     selectBuilding,
     onManipulationExecuted,
     executeHostileTakeover,
+    competitionEngine: competitionEngine.current,
     aiDecisionCooldown,
     eliminationEnabled,
     gameStartTime,

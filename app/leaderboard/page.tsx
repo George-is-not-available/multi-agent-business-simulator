@@ -1,15 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Leaderboard from '@/components/Leaderboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, BarChart3, Calendar, Clock, DollarSign, Target, Users, ArrowLeft } from 'lucide-react';
+import { Trophy, BarChart3, Calendar, Clock, DollarSign, Target, Users, ArrowLeft, Award, Star, Crown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { AchievementProgress, RecentAchievements, AchievementBadge } from '@/components/AchievementBadge';
+import { ACHIEVEMENTS } from '@/lib/game/achievements';
 
 export default function LeaderboardPage() {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState('rankings');
+  const [achievementData, setAchievementData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedRarity, setSelectedRarity] = useState<string>('all');
+  const [showUnlockedOnly, setShowUnlockedOnly] = useState(false);
+
+  const fetchAchievementData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/achievements');
+      const data = await response.json();
+      if (data.success) {
+        setAchievementData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch achievement data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTab === 'achievements') {
+      fetchAchievementData();
+    }
+  }, [selectedTab]);
 
   const tabs = [
     { id: 'rankings', label: '排行榜', icon: Trophy },
@@ -121,117 +149,137 @@ export default function LeaderboardPage() {
     </div>
   );
 
-  const renderAchievements = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-yellow-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-yellow-300 flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            传奇商人
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400 text-sm mb-3">连续获胜10场游戏</p>
-          <div className="flex items-center gap-2">
-            <div className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs">
-              超级稀有
-            </div>
-            <span className="text-gray-400 text-xs">12人获得</span>
-          </div>
-        </CardContent>
-      </Card>
+  const renderAchievements = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+        </div>
+      );
+    }
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-blue-300 flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            百万富翁
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400 text-sm mb-3">单局游戏资产超过100万</p>
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs">
-              稀有
-            </div>
-            <span className="text-gray-400 text-xs">89人获得</span>
-          </div>
-        </CardContent>
-      </Card>
+    if (!achievementData) {
+      return (
+        <div className="text-center text-gray-400 py-12">
+          <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>暂无成就数据</p>
+        </div>
+      );
+    }
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-green-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-green-300 flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            精准狙击
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400 text-sm mb-3">成功执行恶意收购</p>
-          <div className="flex items-center gap-2">
-            <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs">
-              常见
-            </div>
-            <span className="text-gray-400 text-xs">234人获得</span>
-          </div>
-        </CardContent>
-      </Card>
+    const categories = ['all', 'business', 'competition', 'strategy', 'collection', 'special'];
+    const rarities = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
+    
+    const filteredAchievements = ACHIEVEMENTS.filter(achievement => {
+      const categoryMatch = selectedCategory === 'all' || achievement.category === selectedCategory;
+      const rarityMatch = selectedRarity === 'all' || achievement.rarity === selectedRarity;
+      return categoryMatch && rarityMatch;
+    });
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-purple-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-purple-300 flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            马拉松玩家
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400 text-sm mb-3">累计游戏时长超过100小时</p>
-          <div className="flex items-center gap-2">
-            <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs">
-              稀有
-            </div>
-            <span className="text-gray-400 text-xs">67人获得</span>
-          </div>
-        </CardContent>
-      </Card>
+    return (
+      <div className="space-y-6">
+        {/* 成就统计概览 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <Trophy className="h-6 w-6 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{ACHIEVEMENTS.length}</p>
+                  <p className="text-sm text-gray-400">总成就数</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-800/50 backdrop-blur-sm border-yellow-500/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-500/20 rounded-lg">
+                  <Star className="h-6 w-6 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{achievementData.leaderboard?.length || 0}</p>
+                  <p className="text-sm text-gray-400">玩家参与</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-800/50 backdrop-blur-sm border-purple-500/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-500/20 rounded-lg">
+                  <Crown className="h-6 w-6 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{ACHIEVEMENTS.filter(a => a.rarity === 'legendary').length}</p>
+                  <p className="text-sm text-gray-400">传奇成就</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-red-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-red-300 flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            团队合作
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400 text-sm mb-3">参与多人游戏获胜</p>
-          <div className="flex items-center gap-2">
-            <div className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs">
-              常见
+        {/* 过滤器 */}
+        <Card className="bg-slate-800/50 backdrop-blur-sm border-blue-500/30">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-300">类别:</span>
+                <select 
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
+                >
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>
+                      {cat === 'all' ? '全部' : cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-300">稀有度:</span>
+                <select 
+                  value={selectedRarity}
+                  onChange={(e) => setSelectedRarity(e.target.value)}
+                  className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
+                >
+                  {rarities.map(rarity => (
+                    <option key={rarity} value={rarity}>
+                      {rarity === 'all' ? '全部' : rarity}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <span className="text-gray-400 text-xs">456人获得</span>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-cyan-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-cyan-300 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            股市大亨
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400 text-sm mb-3">单局股票操作盈利超过50万</p>
-          <div className="flex items-center gap-2">
-            <div className="bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded text-xs">
-              稀有
-            </div>
-            <span className="text-gray-400 text-xs">78人获得</span>
+        {/* 成就网格 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredAchievements.map((achievement) => (
+            <AchievementBadge
+              key={achievement.id}
+              achievement={achievement}
+              unlocked={false} // 这里需要实际的解锁状态
+            />
+          ))}
+        </div>
+
+        {filteredAchievements.length === 0 && (
+          <div className="text-center text-gray-400 py-12">
+            <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>没有找到符合条件的成就</p>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white">

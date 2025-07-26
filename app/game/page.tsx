@@ -19,6 +19,8 @@ import GameModeIndicator from '@/components/GameModeIndicator';
 
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import GameChat from '@/components/GameChat';
+import { RealTimeAnalysis } from '@/components/RealTimeAnalysis';
+import { AcquisitionNotification } from '@/components/AcquisitionNotification';
 
 export default function GamePage() {
   const [showStartup, setShowStartup] = useState(true);
@@ -441,6 +443,12 @@ export default function GamePage() {
               onHostileTakeover={executeHostileTakeover}
             />
             
+            {/* 实时分析面板 */}
+            <RealTimeAnalysis
+              gameState={gameState}
+              playerCompany={playerCompany}
+            />
+            
             {/* 行动指南 */}
             <ActionLegend />
           </div>
@@ -609,6 +617,13 @@ export default function GamePage() {
       <NewsToast
         notifications={notifications}
         onDismiss={dismiss}
+      />
+      
+      {/* 收购通知 */}
+      <AcquisitionNotification
+        gameState={gameState}
+        playerCompany={playerCompany}
+        onHostileTakeover={executeHostileTakeover}
       />
       
       {/* Chat System */}

@@ -106,14 +106,14 @@ export const gameModes: GameModeConfig[] = [
   {
     id: 'asia',
     name: '亚洲模式',
-    description: '最高难度！45秒发育时间，20个疯狂AI，极端竞争环境',
+    description: '最高难度！4.5秒发育时间，95个疯狂AI，极端竞争环境',
     icon: '🔥',
     difficulty: 'extreme',
     config: {
       startingAssets: 500000,
-      gracePeriod: 45, // 45秒保护期
+      gracePeriod: 4.5, // 45秒保护期
       gameSpeed: 2.0,
-      aiCount: 20,
+      aiCount: 90,
       aiAggressiveness: 95,
       aiDecisionDelay: 1000, // 1秒延迟
       economicVolatility: 80,

@@ -96,6 +96,26 @@ export const gameStatistics = pgTable('game_statistics', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// Achievement-related tables
+export const playerAchievements = pgTable('player_achievements', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  totalPoints: integer('total_points').notNull().default(0),
+  unlockedCount: integer('unlocked_count').notNull().default(0),
+  badges: json('badges').default([]), // Array of badge names
+  titles: json('titles').default([]), // Array of title names
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const unlockedAchievements = pgTable('unlocked_achievements', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  achievementId: varchar('achievement_id', { length: 100 }).notNull(),
+  unlockedAt: timestamp('unlocked_at').notNull().defaultNow(),
+  pointsEarned: integer('points_earned').notNull().default(0),
+});
+
 export const chatMessages = pgTable('chat_messages', {
   id: serial('id').primaryKey(),
   roomId: uuid('room_id').notNull().references(() => gameRooms.id),
@@ -112,6 +132,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   participations: many(gameParticipants),
   actions: many(gameActions),
   statistics: one(gameStatistics),
+  achievements: one(playerAchievements),
+  unlockedAchievements: many(unlockedAchievements),
 }));
 
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
@@ -168,6 +190,20 @@ export const gameStatisticsRelations = relations(gameStatistics, ({ one }) => ({
   }),
 }));
 
+export const playerAchievementsRelations = relations(playerAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [playerAchievements.userId],
+    references: [users.id],
+  }),
+}));
+
+export const unlockedAchievementsRelations = relations(unlockedAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [unlockedAchievements.userId],
+    references: [users.id],
+  }),
+}));
+
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   room: one(gameRooms, {
     fields: [chatMessages.roomId],
@@ -195,6 +231,10 @@ export type GameAction = typeof gameActions.$inferSelect;
 export type NewGameAction = typeof gameActions.$inferInsert;
 export type GameStatistics = typeof gameStatistics.$inferSelect;
 export type NewGameStatistics = typeof gameStatistics.$inferInsert;
+export type PlayerAchievements = typeof playerAchievements.$inferSelect;
+export type NewPlayerAchievements = typeof playerAchievements.$inferInsert;
+export type UnlockedAchievement = typeof unlockedAchievements.$inferSelect;
+export type NewUnlockedAchievement = typeof unlockedAchievements.$inferInsert;
 
 export enum ActivityType {
   SIGN_UP = 'SIGN_UP',

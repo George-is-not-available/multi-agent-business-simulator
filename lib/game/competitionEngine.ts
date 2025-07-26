@@ -22,7 +22,7 @@ export interface CompetitionAnalytics {
 export class CompetitionEngine {
   private events: CompetitionEvent[] = [];
   private eliminationThreshold = 50000; // 公司破产阈值：5万资产
-  private victoryAssetRatio = 0.6; // 胜利条件：控制60%的总资产
+  private victoryAssetRatio = 0.5; // 胜利条件：控制50%的总资产（更容易获胜）
 
   // 检查资产变化并记录事件
   checkAssetChanges(previousState: GameState, currentState: GameState): CompetitionEvent[] {
@@ -144,33 +144,53 @@ export class CompetitionEngine {
     isGameOver: boolean;
     winner: Company | null;
     reason: string;
+    victoryType: 'elimination' | 'asset_dominance' | 'bankruptcy' | 'building_control' | 'timeout';
   } {
     const activeCompanies = gameState.companies.filter(c => c.status === 'active');
+    const totalAssets = activeCompanies.reduce((sum, company) => sum + company.assets, 0);
+    const totalBuildings = gameState.buildings.length;
     
-    // 条件1：只剩下一家公司
+    // 条件1：只剩下一家公司（最终胜利条件）
     if (activeCompanies.length === 1) {
       return {
         isGameOver: true,
         winner: activeCompanies[0],
-        reason: '消灭了所有竞争对手'
+        reason: '通过企业收购消灭了所有竞争对手！🏆',
+        victoryType: 'elimination'
       };
     }
 
-    // 条件2：某公司控制超过60%的总资产
-    const totalAssets = activeCompanies.reduce((sum, company) => sum + company.assets, 0);
+    // 条件2：某公司控制超过50%的总资产（经济主导胜利）
     const dominantCompany = activeCompanies.find(
       company => (company.assets / totalAssets) >= this.victoryAssetRatio
     );
 
-    if (dominantCompany) {
+    if (dominantCompany && totalAssets > 0) {
       return {
         isGameOver: true,
         winner: dominantCompany,
-        reason: `控制了${Math.round((dominantCompany.assets / totalAssets) * 100)}%的市场资产`
+        reason: `控制了${Math.round((dominantCompany.assets / totalAssets) * 100)}%的市场资产，实现经济主导！💰`,
+        victoryType: 'asset_dominance'
       };
     }
 
-    // 条件3：玩家破产
+    // 条件3：某公司控制超过55%的建筑（建筑控制胜利） - 降低胜利门槛
+    const buildingDominantCompany = activeCompanies.find(company => {
+      const ownedBuildings = gameState.buildings.filter(b => b.owner === company.id).length;
+      return totalBuildings > 0 && (ownedBuildings / totalBuildings) >= 0.55;
+    });
+
+    if (buildingDominantCompany) {
+      const ownedBuildings = gameState.buildings.filter(b => b.owner === buildingDominantCompany.id).length;
+      return {
+        isGameOver: true,
+        winner: buildingDominantCompany,
+        reason: `控制了${Math.round((ownedBuildings / totalBuildings) * 100)}%的建筑设施，实现区域垄断！🏗️`,
+        victoryType: 'building_control'
+      };
+    }
+
+    // 条件4：玩家破产
     const playerCompany = gameState.companies.find(c => c.isPlayer);
     if (playerCompany && playerCompany.status === 'bankrupt') {
       const richestAI = activeCompanies
@@ -180,14 +200,29 @@ export class CompetitionEngine {
       return {
         isGameOver: true,
         winner: richestAI || null,
-        reason: '玩家公司破产'
+        reason: '玩家公司破产，AI获得胜利！💀',
+        victoryType: 'bankruptcy'
+      };
+    }
+
+    // 条件5：所有非玩家公司都破产（玩家胜利）
+    const activeBankruptCompanies = gameState.companies.filter(c => c.status === 'bankrupt');
+    const allAIsBankrupt = gameState.companies.filter(c => !c.isPlayer).every(c => c.status === 'bankrupt');
+    
+    if (allAIsBankrupt && playerCompany && playerCompany.status === 'active') {
+      return {
+        isGameOver: true,
+        winner: playerCompany,
+        reason: '成功淘汰所有AI竞争对手，商业帝国建立！👑',
+        victoryType: 'elimination'
       };
     }
 
     return {
       isGameOver: false,
       winner: null,
-      reason: ''
+      reason: '',
+      victoryType: 'elimination'
     };
   }
 
@@ -251,8 +286,8 @@ export class CompetitionEngine {
     updatedState: GameState,
     event: CompetitionEvent 
   } {
-    // 计算收购成本（目标公司资产的150%）
-    const cost = Math.floor(targetCompany.assets * 1.5);
+    // 计算收购成本（目标公司资产的120%） - 降低收购成本让玩家更容易收购
+    const cost = Math.floor(targetCompany.assets * 1.2);
     const success = attackerCompany.assets >= cost;
 
     let updatedState = gameState;
@@ -266,7 +301,8 @@ export class CompetitionEngine {
             return {
               ...company,
               assets: company.assets - cost,
-              buildings: [...company.buildings, ...targetCompany.buildings]
+              buildings: [...company.buildings, ...targetCompany.buildings],
+              employees: company.employees + targetCompany.employees // 合并员工
             };
           }
           if (company.id === targetCompany.id) {
@@ -274,7 +310,8 @@ export class CompetitionEngine {
               ...company,
               status: 'bankrupt' as const,
               assets: 0,
-              buildings: []
+              buildings: [],
+              employees: 0 // 员工被合并
             };
           }
           return company;
@@ -286,6 +323,19 @@ export class CompetitionEngine {
             : building
         )
       };
+      
+      // 添加公司淘汰事件
+      const eliminationEvent: CompetitionEvent = {
+        id: `elimination_${Date.now()}_${targetCompany.id}`,
+        timestamp: Date.now(),
+        type: 'company_eliminated',
+        initiator: attackerCompany.id,
+        target: targetCompany.id,
+        description: `💀 ${targetCompany.name}被${attackerCompany.name}收购并淘汰出局！`,
+        impact: cost
+      };
+      
+      this.addEvent(eliminationEvent);
     }
 
     const event: CompetitionEvent = {
@@ -295,8 +345,8 @@ export class CompetitionEngine {
       initiator: attackerCompany.id,
       target: targetCompany.id,
       description: success 
-        ? `🏢 ${attackerCompany.name}成功收购了${targetCompany.name}（成本：¥${cost.toLocaleString()}）`
-        : `❌ ${attackerCompany.name}试图收购${targetCompany.name}但资金不足`,
+        ? `🏢 ${attackerCompany.name}成功收购了${targetCompany.name}（成本：¥${cost.toLocaleString()}）- 企业已被完全淘汰！`
+        : `❌ ${attackerCompany.name}试图收购${targetCompany.name}但资金不足（需要：¥${cost.toLocaleString()}）`,
       impact: cost
     };
 
@@ -337,5 +387,70 @@ export class CompetitionEngine {
   // 设置胜利资产比例
   setVictoryAssetRatio(ratio: number): void {
     this.victoryAssetRatio = Math.min(Math.max(ratio, 0.1), 1); // 限制在10%-100%之间
+  }
+
+  // 检查是否接近胜利条件
+  checkNearVictoryConditions(gameState: GameState): {
+    isNearVictory: boolean;
+    warningMessage: string;
+    timeToVictory: number; // 估计分钟数
+  } {
+    const activeCompanies = gameState.companies.filter(c => c.status === 'active');
+    const totalAssets = activeCompanies.reduce((sum, company) => sum + company.assets, 0);
+    
+    // 检查是否有公司接近收购胜利
+    const vulnerableCompanies = activeCompanies.filter(company => {
+      const potentialAcquirers = activeCompanies.filter(other => 
+        other.id !== company.id && other.assets >= company.assets * 1.5
+      );
+      return potentialAcquirers.length > 0;
+    });
+    
+    if (vulnerableCompanies.length > 0) {
+      return {
+        isNearVictory: true,
+        warningMessage: `⚠️ ${vulnerableCompanies.length}家企业面临被收购风险！`,
+        timeToVictory: 2 // 估计2分钟内可能发生
+      };
+    }
+    
+    // 检查资产主导条件
+    const nearDominantCompany = activeCompanies.find(company => {
+      const assetRatio = totalAssets > 0 ? (company.assets / totalAssets) : 0;
+      return assetRatio >= this.victoryAssetRatio * 0.8; // 80%的胜利条件
+    });
+    
+    if (nearDominantCompany) {
+      const assetRatio = totalAssets > 0 ? (nearDominantCompany.assets / totalAssets) : 0;
+      return {
+        isNearVictory: true,
+        warningMessage: `🎯 ${nearDominantCompany.name}已控制${Math.round(assetRatio * 100)}%资产，接近胜利！`,
+        timeToVictory: 5 // 估计5分钟内可能达到胜利条件
+      };
+    }
+    
+    return {
+      isNearVictory: false,
+      warningMessage: '',
+      timeToVictory: Infinity
+    };
+  }
+
+  // 自动游戏结束处理
+  triggerGameEnd(gameState: GameState, winner: Company | null, reason: string): void {
+    console.log(`🎮 游戏结束！获胜者: ${winner?.name || '无'}, 原因: ${reason}`);
+    
+    // 添加游戏结束事件
+    const endEvent: CompetitionEvent = {
+      id: `game_end_${Date.now()}`,
+      timestamp: Date.now(),
+      type: 'company_eliminated',
+      initiator: winner?.id || 'system',
+      target: 'all',
+      description: `🏁 游戏结束！${winner?.name || '系统'}获得胜利：${reason}`,
+      impact: 0
+    };
+    
+    this.addEvent(endEvent);
   }
 }
