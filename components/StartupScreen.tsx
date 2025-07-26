@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import LanguageSwitch from '@/components/LanguageSwitch';
+
 
 interface StartupScreenProps {
   onComplete: () => void;
@@ -210,11 +210,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ onComplete }) => {
           {t.startup.platform}
         </p>
       </div>
-      
-      {/* 语言切换按钮 */}
-      <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
-        <LanguageSwitch variant="startup" />
-      </div>
+
     </div>
   );
 };

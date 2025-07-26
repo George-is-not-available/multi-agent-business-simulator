@@ -1,13 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { Language, Translation, translations } from './languages';
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: Translation;
-  toggleLanguage: () => void;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -17,30 +16,13 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('zh');
-
-  // 从localStorage加载语言设置
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('game-language') as Language;
-    if (savedLanguage && (savedLanguage === 'zh' || savedLanguage === 'en')) {
-      setLanguage(savedLanguage);
-    }
-  }, []);
-
-  // 保存语言设置到localStorage
-  useEffect(() => {
-    localStorage.setItem('game-language', language);
-  }, [language]);
-
-  const toggleLanguage = () => {
-    setLanguage(prev => prev === 'zh' ? 'en' : 'zh');
-  };
+  const language: Language = 'zh'; // Fixed to Chinese
+  const setLanguage = (lang: Language) => {}; // No-op function
 
   const value: LanguageContextType = {
     language,
     setLanguage,
     t: translations[language],
-    toggleLanguage,
   };
 
   return (

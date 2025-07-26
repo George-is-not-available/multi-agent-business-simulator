@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import GameLobby from '@/components/GameLobby';
 import Game from '@/components/Game'; // Assuming we'll update the existing game component
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import LanguageSwitch from '@/components/LanguageSwitch';
+
 import type { GameState } from '@/lib/game/types';
 
 type GameMode = 'lobby' | 'game' | 'loading';
@@ -34,10 +34,7 @@ export default function MultiplayerPage() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Language Switch - Fixed position */}
-      <div className="fixed top-4 right-4 z-50">
-        <LanguageSwitch variant="compact" />
-      </div>
+
 
       {/* Main content */}
       {gameMode === 'lobby' && (

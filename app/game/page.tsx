@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building, Users, DollarSign, Target, MapPin } from 'lucide-react';
@@ -14,8 +14,19 @@ import StartupScreen from '@/components/StartupScreen';
 import AICountdown from '@/components/AICountdown';
 import EliminationCountdown from '@/components/EliminationCountdown';
 
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
 export default function GamePage() {
   const [showStartup, setShowStartup] = useState(true);
+  const { t } = useLanguage();
+  
+  // Check if startup screen was already shown in this session
+  useEffect(() => {
+    const startupShown = sessionStorage.getItem('startupScreenShown');
+    if (startupShown) {
+      setShowStartup(false);
+    }
+  }, []);
   
   const { 
     gameState, 
@@ -40,7 +51,17 @@ export default function GamePage() {
   // 处理启动屏幕完成
   const handleStartupComplete = () => {
     setShowStartup(false);
+    // Mark startup screen as shown in this session
+    sessionStorage.setItem('startupScreenShown', 'true');
   };
+  
+  // Debug function to reset startup screen (call from browser console)
+  if (typeof window !== 'undefined') {
+    (window as any).resetStartupScreen = () => {
+      sessionStorage.removeItem('startupScreenShown');
+      setShowStartup(true);
+    };
+  }
   
   // 如果仍在显示启动屏幕，则只显示启动屏幕
   if (showStartup) {
@@ -93,10 +114,7 @@ export default function GamePage() {
       </div>
       
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* 语言切换按钮 */}
-        <div className="absolute top-4 right-4 z-20">
-          <LanguageSwitch variant="compact" />
-        </div>
+
         
         {/* AI倒计时提示 */}
         {aiDecisionCooldown > 0 && (
