@@ -99,7 +99,7 @@ export class CompetitionEngine {
     const eliminatedCompanies: Company[] = [];
     const events: CompetitionEvent[] = [];
 
-    // 找出破产公司
+    // 找出破产公司（资产为0或负数）
     const bankruptCompanies = gameState.companies.filter(
       company => company.assets <= 0 && company.status === 'active'
     );
@@ -107,13 +107,15 @@ export class CompetitionEngine {
     bankruptCompanies.forEach(company => {
       eliminatedCompanies.push(company);
       
+      const playerType = company.isPlayer ? '玩家' : 'AI';
+      
       events.push({
         id: `elimination_${Date.now()}_${company.id}`,
         timestamp: Date.now(),
         type: 'company_eliminated',
         initiator: 'system',
         target: company.id,
-        description: `💀 ${company.name}已破产出局`,
+        description: `💀 ${company.name}(${playerType})资产归零，已被淘汰出局！`,
         impact: Math.abs(company.assets)
       });
     });

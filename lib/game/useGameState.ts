@@ -592,14 +592,13 @@ export const useGameState = () => {
           toastManager.warning('竞争激化', '⚠️ 淘汰机制已启用！资产为0的公司将被淘汰！', 8000);
         }
         
-        // 只有在淘汰机制启用后才进行淘汰和胜利条件检查
-        if (eliminationEnabled) {
-          // 检查消除
-          const { eliminatedCompanies, updatedState, events } = competitionEngine.current.checkEliminations(newState);
-          competitionEngine.current.addEvents(events);
-          newState = updatedState;
+        // 无论是否在保护期内，资产为0的公司都会被淘汰
+        const { eliminatedCompanies, updatedState, events } = competitionEngine.current.checkEliminations(newState);
+        competitionEngine.current.addEvents(events);
+        newState = updatedState;
 
-          // 检查胜利条件
+        // 检查胜利条件 - 只有在淘汰机制启用后才检查胜利条件
+        if (eliminationEnabled) {
           const { isGameOver, winner, reason } = competitionEngine.current.checkVictoryConditions(newState);
           
           if (isGameOver) {

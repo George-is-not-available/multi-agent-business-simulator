@@ -118,10 +118,13 @@ export const EliminationCountdown: React.FC<EliminationCountdownProps> = ({
         </div>
       </div>
       
-      <div className="mt-2 text-xs opacity-70">
-        <span className={isCritical ? 'text-red-400/80' : isWarning ? 'text-yellow-400/80' : 'text-blue-400/80'}>
+      <div className="mt-2 text-xs opacity-70 space-y-1">
+        <div className={isCritical ? 'text-red-400/80' : isWarning ? 'text-yellow-400/80' : 'text-blue-400/80'}>
           {timeLeft > 0 ? t.competition.timeRemaining : t.competition.aboutToActivate}
-        </span>
+        </div>
+        <div className="text-orange-400/80 font-medium">
+          ⚠️ 注意：资产为0的公司会立即被淘汰（不受保护期限制）
+        </div>
       </div>
     </div>
   );
