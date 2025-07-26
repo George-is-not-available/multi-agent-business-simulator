@@ -228,8 +228,7 @@ export default function GameLobby({ onGameStart }: GameLobbyProps) {
                       </div>
                     ))
                 )}
-              </div>
-
+                
                 <button
                   onClick={() => socketClient.listRooms()}
                   className="w-full mt-4 py-2 px-4 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors text-sm"
