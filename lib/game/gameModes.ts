@@ -106,25 +106,27 @@ export const gameModes: GameModeConfig[] = [
   {
     id: 'asia',
     name: '亚洲模式',
-    description: '最高难度！4.5秒发育时间，95个疯狂AI，极端竞争环境',
+    description: '终极挑战！4.5秒发育时间，90个疯狂AI自主决策，极端竞争环境',
     icon: '🔥',
     difficulty: 'extreme',
     config: {
       startingAssets: 500000,
-      gracePeriod: 4.5, // 45秒保护期
-      gameSpeed: 2.0,
+      gracePeriod: 4.5, // 4.5秒保护期
+      gameSpeed: 3.0, // 加快游戏速度
       aiCount: 90,
-      aiAggressiveness: 95,
-      aiDecisionDelay: 1000, // 1秒延迟
-      economicVolatility: 80,
-      stockMarketVariability: 90,
+      aiAggressiveness: 98, // 提高AI攻击性
+      aiDecisionDelay: 500, // 0.5秒延迟，更快决策
+      economicVolatility: 95, // 更高经济波动性
+      stockMarketVariability: 95, // 更高股市波动性
       allowSpectators: true,
       maxPlayers: 4,
       enablePowerUps: false,
       specialRules: [
         { type: 'hyperAggressive', value: true },
         { type: 'extremeCompetition', value: true },
-        { type: 'rapidElimination', value: true }
+        { type: 'rapidElimination', value: true },
+        { type: 'autonomousAI', value: true }, // 启用完全自主AI决策
+        { type: 'massiveCompetition', value: 90 } // 90个AI竞争对手
       ]
     }
   }

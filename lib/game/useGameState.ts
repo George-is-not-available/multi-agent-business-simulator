@@ -569,56 +569,87 @@ export const useGameState = (gameModeConfig?: GameModeConfig) => {
             toastManager.success('游戏状态', 'AI竞争对手开始行动！', 3000);
           }
           
-          aiCompanies.forEach(async (company) => {
-            try {
-              const availableBuildings = newState.buildings.filter(b => !b.owner);
-              const enemies = newState.companies.filter(c => c.id !== company.id && c.status === 'active');
-              const marketConditions = {
-                stocks: stockMarket.getAllStocks(),
-                news: stockMarket.getMarketNews()
-              };
-              
-              console.log(`🤖 Making decision for ${company.name} (Assets: ¥${company.assets.toLocaleString()})`);
-              const decision = await aiDecisionEngine.current.makeDecision(company, newState, {
-                availableBuildings,
-                enemies,
-                marketConditions
-              });
-              console.log(`🎯 Decision made for ${company.name}:`, decision.action, decision.reasoning);
-              
-              // 在下一次游戏循环中执行决策
-              setTimeout(() => {
-                setGameState(currentState => {
-                  return executeAIDecision(currentState, company.id, decision);
-                });
-              }, Math.random() * 4000 + 2000); // 2-6秒后执行 - 给玩家更多反应时间
-              
-            } catch (error) {
-              console.error(`❌ AI decision error for company ${company.name}:`, error);
-              // 使用简单的备用逻辑
-              if (Math.random() < 0.01) { // 进一步降低AI备用行动概率至1%
-                const availableBuildings = newState.buildings.filter(b => !b.owner && company.assets >= b.level * 100000);
-                if (availableBuildings.length > 0) {
-                  const targetBuilding = availableBuildings[Math.floor(Math.random() * availableBuildings.length)];
-                  const cost = targetBuilding.level * 100000;
+          // 为了处理90个AI，我们需要分批处理以提高性能
+          const batchSize = Math.min(10, aiCompanies.length); // 每批最多10个AI
+          const totalBatches = Math.ceil(aiCompanies.length / batchSize);
+          
+          for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const batchStart = batchIndex * batchSize;
+            const batchEnd = Math.min(batchStart + batchSize, aiCompanies.length);
+            const currentBatch = aiCompanies.slice(batchStart, batchEnd);
+            
+            // 错开每批的处理时间
+            setTimeout(() => {
+              currentBatch.forEach(async (company, index) => {
+                try {
+                  const availableBuildings = newState.buildings.filter(b => !b.owner);
+                  const enemies = newState.companies.filter(c => c.id !== company.id && c.status === 'active');
+                  const marketConditions = {
+                    stocks: stockMarket.getAllStocks(),
+                    news: stockMarket.getMarketNews()
+                  };
                   
-                  newState.buildings = newState.buildings.map(b => 
-                    b.id === targetBuilding.id ? { ...b, owner: company.id } : b
-                  );
+                  // 只对部分AI打印日志以减少控制台噪音
+                  if (aiCompanies.length <= 10 || Math.random() < 0.1) {
+                    console.log(`🤖 Making decision for ${company.name} (Assets: ¥${company.assets.toLocaleString()})`);
+                  }
                   
-                  newState.companies = newState.companies.map(c => 
-                    c.id === company.id 
-                      ? {
-                          ...c,
-                          assets: c.assets - cost,
-                          buildings: [...c.buildings, targetBuilding.id]
-                        }
-                      : c
-                  );
+                  const decision = await aiDecisionEngine.current.makeDecision(company, newState, {
+                    availableBuildings,
+                    enemies,
+                    marketConditions
+                  });
+                  
+                  if (aiCompanies.length <= 10 || Math.random() < 0.1) {
+                    console.log(`🎯 Decision made for ${company.name}:`, decision.action, decision.reasoning);
+                  }
+                  
+                  // 错开决策执行时间，亚洲模式下更快执行
+                  const executionDelay = gameModeConfig?.aiDecisionDelay || 2000;
+                  const randomDelay = Math.random() * executionDelay + (index * 100); // 每个AI错开100ms
+                  
+                  setTimeout(() => {
+                    setGameState(currentState => {
+                      return executeAIDecision(currentState, company.id, decision);
+                    });
+                  }, randomDelay);
+                  
+                } catch (error) {
+                  console.error(`❌ AI decision error for company ${company.name}:`, error);
+                  // 亚洲模式下使用更激进的备用逻辑
+                  const fallbackProbability = gameModeConfig?.id === 'asia' ? 0.3 : 0.01;
+                  if (Math.random() < fallbackProbability) {
+                    const availableBuildings = newState.buildings.filter(b => !b.owner && company.assets >= b.level * 100000);
+                    if (availableBuildings.length > 0) {
+                      const targetBuilding = availableBuildings[Math.floor(Math.random() * availableBuildings.length)];
+                      const cost = targetBuilding.level * 100000;
+                      
+                      setTimeout(() => {
+                        setGameState(currentState => {
+                          const updatedState = { ...currentState };
+                          updatedState.buildings = updatedState.buildings.map(b => 
+                            b.id === targetBuilding.id ? { ...b, owner: company.id } : b
+                          );
+                          
+                          updatedState.companies = updatedState.companies.map(c => 
+                            c.id === company.id 
+                              ? {
+                                  ...c,
+                                  assets: c.assets - cost,
+                                  buildings: [...c.buildings, targetBuilding.id]
+                                }
+                              : c
+                          );
+                          
+                          return updatedState;
+                        });
+                      }, Math.random() * 1000 + 500); // 0.5-1.5秒后执行备用逻辑
+                    }
+                  }
                 }
-              }
-            }
-          });
+              });
+            }, batchIndex * 200); // 每批错开200ms
+          }
         } else {
           setAiDecisionCooldown(prev => {
             const newCooldown = prev - 1;
